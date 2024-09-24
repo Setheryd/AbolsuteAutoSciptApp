@@ -5,19 +5,20 @@ import os
 from datetime import datetime
 import sys
 
-def find_file(base_path, filename, max_depth=5):
+def find_specific_file(base_path, filename, required_subpath, max_depth=5):
     """
-    Search for a file in a directory up to a specified depth using os.scandir for speed.
+    Search for a specific file within directories that contain a required subpath.
 
     Args:
         base_path (str): The root directory to start searching from.
         filename (str): The exact name of the file to search for.
+        required_subpath (str): A substring that must be present in the file's directory path.
         max_depth (int): Maximum depth to search within subdirectories.
 
     Returns:
         str or None: The full path to the found file, or None if not found.
     """
-    print(f"Searching for {filename} in {base_path}...")
+    print(f"Searching for {filename} within directories containing '{required_subpath}' in {base_path}...")
 
     def scan_directory(path, current_depth):
         # Stop recursion if the current depth exceeds max_depth
@@ -28,8 +29,12 @@ def find_file(base_path, filename, max_depth=5):
             with os.scandir(path) as it:
                 for entry in it:
                     if entry.is_file() and entry.name.lower() == filename.lower():
-                        print(f"Found {filename} at: {entry.path}")
-                        return entry.path
+                        # Check if the required_subpath is in the file's directory path
+                        if required_subpath.lower() in os.path.dirname(entry.path).lower():
+                            print(f"Found {filename} at: {entry.path}")
+                            return entry.path
+                        else:
+                            print(f"Found {filename} at {entry.path}, but it does not contain '{required_subpath}' in its path. Skipping.")
                     elif entry.is_dir():
                         found_file = scan_directory(entry.path, current_depth + 1)
                         if found_file:
@@ -89,12 +94,13 @@ def extract_pending_admissions():
 
     # Define the filename to search for
     filename = "Absolute Patient Records.xlsm"
+    required_subpath = "Absolute Operation"
 
     # Find the file in the specified subdirectory
     # The expected path: C:\Users\{username}\OneDrive - Ability Home Health, LLC\{unknown}\Absolute Operation\Absolute Patient Records.xlsm
-    file_path = find_file(base_path, filename)
+    file_path = find_specific_file(base_path, filename, required_subpath)
     if file_path is None:
-        print(f"File {filename} not found starting from {base_path}.")
+        print(f"File {filename} not found within directories containing '{required_subpath}' starting from {base_path}.")
         return []
 
     password = "abs$1018$B"
@@ -201,7 +207,8 @@ def send_email(pending_admissions):
         # Compose the email body in HTML format
         email_body = (
             "<p>Dear Team,</p>"
-            "<p>I hope you're doing well. Here is the list of patients pending admission. If you notice any mistakes, please update the patient records file accordingly.</p>"
+            "<p>I hope this message finds you well.</p>"
+            "<p>This is an automated reminder regarding pending admissions. The following patients currently do not have an admission date and require your immediate attention:</p>"
             "<ul>"
         )
 
@@ -210,9 +217,11 @@ def send_email(pending_admissions):
             email_body += f"<li>{patient}</li>"
         email_body += "</ul>"
 
-        email_body += "<p>Please take the necessary actions to complete their admissions. Thank you for your attention to this matter.</p>"
-
-        email_body += "<p>Best regards,</p>"
+        email_body += (
+            "<p>Please review and update the patient records file accordingly. If you notice any discrepancies or have already addressed these admissions, kindly update the records to maintain accuracy.</p>"
+            "<p>Thank you for your prompt attention to this matter.</p>"
+            "<p>Best regards,</p>"
+        )
 
         # Append the signature if available
         if signature:
