@@ -3,7 +3,7 @@
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-import win32com.client as win32 # type: ignore
+import win32com.client as win32  # type: ignore
 
 
 def find_specific_file(base_path, filename, required_subpath, max_depth=5):
@@ -280,7 +280,8 @@ def extract_expiring_employees():
     print(f"Found {demographics_filename} at: {demographics_file}")
 
     try:
-        excel = win32.Dispatch("Excel.Application")
+        # Replace Dispatch with DispatchEx to create a new Excel instance
+        excel = win32.DispatchEx("Excel.Application")
         excel.DisplayAlerts = False
         excel.Visible = False
 
