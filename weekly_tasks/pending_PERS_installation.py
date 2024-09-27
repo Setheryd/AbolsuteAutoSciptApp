@@ -117,6 +117,7 @@ def extract_pending_admissions():
         excel.DisplayAlerts = False  # Disable Excel alerts
         excel.Visible = False        # Make Excel invisible
         excel.ScreenUpdating = False # Prevent screen updates
+        excel.EnableEvents = False    # Disable events
         print("Excel application object created successfully.")
 
         # Open the workbook in read-only mode with password
@@ -196,6 +197,10 @@ def send_email(pending_admissions):
     Args:
         pending_admissions (list): The list of patient names with pending PERS installations.
     """
+    if not pending_admissions:
+        print("No PERS patients with pending installations found. Email will not be sent.")
+        return
+
     outlook = None
     mail = None
 
@@ -205,8 +210,8 @@ def send_email(pending_admissions):
         mail = outlook.CreateItem(0)  # 0: olMailItem
 
         # Corrected email recipient formatting by removing trailing space
-        mail.To = "ilya.karpov@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com; victoria.shmoel@absolutecaregivers.com"
-        mail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
+        mail.To = "ilya.karpov@absolutecaregivers.com;raegan.lopez@absolutecaregivers.com;ulyana.stokolosa@absolutecaregivers.com;victoria.shmoel@absolutecaregivers.com"
+        mail.CC = "alexander.nazarov@absolutecaregivers.com;luke.kitchel@absolutecaregivers.com"
         mail.Subject = "Pending PERS Installations"
 
         # Construct the signature path dynamically

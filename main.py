@@ -306,6 +306,8 @@ class MainApp(QWidget):
         # Also reset the selected subcategory button
         self.selected_subcategory_button = None
     
+    # Inside the show_buttons method in MainApp class
+
     def show_buttons(self, items):
         """
         Create and display sub-category buttons based on the selected category.
@@ -330,15 +332,18 @@ class MainApp(QWidget):
             elif item == "Pending Admission":
                 button.setObjectName("pending_admission")
                 button.clicked.connect(self.run_pending_admission)
-            elif item == "Pending Caregiver Assignment":  # <-- Existing condition
+            elif item == "Pending Caregiver Assignment":
                 button.setObjectName("pending_caregiver_assignment")
                 button.clicked.connect(self.run_pending_caregiver_assignment)
-            elif item == "Pending IHCC Admission":  # <-- Existing condition
+            elif item == "Pending IHCC Admission":
                 button.setObjectName("pending_IHCC_admission")
                 button.clicked.connect(self.run_pending_IHCC_admission)
-            elif item == "Pending PERS Installation":  # <-- New condition
+            elif item == "Pending PERS Installation":
                 button.setObjectName("pending_PERS_installation")  # Assign a unique object name
-                button.clicked.connect(self.run_pending_PERS_installation)  # Connect to the new handler
+                button.clicked.connect(self.run_pending_PERS_installation)
+            elif item == "SB ID EXP":  # Add this condition
+                button.setObjectName("sb_id_exp")
+                button.clicked.connect(self.run_sb_id_exp)
             else:
                 button.clicked.connect(self.show_message)
             
@@ -371,6 +376,7 @@ class MainApp(QWidget):
             # Add the button to the layout with horizontal center alignment
             self.button_layout.addWidget(button, alignment=Qt.AlignHCenter)
 
+
     def select_subcategory(self, button):
         """
         Handles the selection of a sub-category button.
@@ -402,11 +408,11 @@ class MainApp(QWidget):
     
     def run_caregiver_id_exp(self):
         """
-        Execute the in_care_id_exp.py script when the "Caregiver ID Exp" button is clicked.
+        Execute the in_emp_id_exp.py script when the "Caregiver ID Exp" button is clicked.
         """
         try:
             # Determine the path to the in_care_id_exp.py script
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_care_id_exp.py")
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_emp_id_exp.py")
             
             if not os.path.exists(script_path):
                 QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
@@ -446,6 +452,64 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
+
+            # Inside the MainApp class in main_app.py
+
+    def run_sb_id_exp(self):
+        """
+        Execute the sb_emp_id_exp.py script when the "SB ID EXP" button is clicked.
+        """
+        try:
+            # Determine the path to the sb_emp_id_exp.py script
+            script_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 
+                "weekly_tasks", 
+                "sb_emp_id_exp.py"
+            )
+            
+            if not os.path.exists(script_path):
+                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
+                return
+            
+            # Disable the sub-category buttons to prevent multiple executions
+            self.set_buttons_enabled(False)
+            
+            # Show the animation and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            
+            # Clear previous logs
+            self.log_text.clear()
+            
+            # Initialize QProcess
+            self.process = QProcess(self)
+            self.process.setProgram(sys.executable)
+            # Use the '-u' flag to force unbuffered output
+            self.process.setArguments(['-u', script_path])
+            
+            # Connect signals
+            self.process.readyReadStandardOutput.connect(self.handle_stdout)
+            self.process.readyReadStandardError.connect(self.handle_stderr)
+            self.process.finished.connect(self.process_finished)
+            
+            # Start the process
+            self.process.start()
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self, 
+                "Exception", 
+                f"An error occurred while executing the script:\n{str(e)}"
+            )
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
+
     
     def run_indy_emp_eval(self):
         """
