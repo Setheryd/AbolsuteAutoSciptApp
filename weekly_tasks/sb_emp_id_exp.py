@@ -232,6 +232,28 @@ def process_employee_audit(ws_active, phone_sheet):
     return expiring_employees_str
 
 
+def get_signature_by_path(signature_path):
+    """
+    Retrieves the specified Outlook signature as HTML from the provided path.
+
+    Args:
+        signature_path (str): The full path to the signature file.
+
+    Returns:
+        str: The specified Outlook signature in HTML format, or empty string if not found.
+    """
+    try:
+        if os.path.exists(signature_path):
+            with open(signature_path, 'r', encoding='utf-8') as f:
+                signature = f.read()
+            return signature
+        else:
+            print(f"Signature file not found at {signature_path}")
+    except Exception as e:
+        print(f"Failed to get Outlook signature: {e}")
+    return ""
+
+
 def send_email(expiring_employees_str):
     """
     Compose and send an email via Outlook with the list of expiring employees.
@@ -255,8 +277,9 @@ def send_email(expiring_employees_str):
         # Get the specified signature
         signature = get_signature_by_path(sig_path)
 
-        # Compose the email body in HTML format
+        # Compose the email body in HTML format with consistent font and size
         email_body = (
+            '<div style="font-family: Arial, sans-serif; font-size: 12pt;">'  # Start of styled div
             "<p>Hi Kaitlyn,</p>"
             "<p>I hope this message finds you well.</p>"
             "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the employee audit checklist with their new expirations.</p>"
@@ -264,6 +287,7 @@ def send_email(expiring_employees_str):
             f"{expiring_employees_str}"
             "</pre>"
             "<p>Best regards,</p>"
+            "</div>"  # End of styled div
         )
 
         # Append the signature if available
