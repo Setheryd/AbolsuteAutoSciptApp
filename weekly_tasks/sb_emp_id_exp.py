@@ -283,7 +283,7 @@ def send_email(expiring_employees_str):
             "<p>Hi Kaitlyn,</p>"
             "<p>I hope this message finds you well.</p>"
             "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the employee audit checklist with their new expirations.</p>"
-            "<pre>"
+            "<pre  style='font-family: Arial, sans-serif; font-size: 12pt;'>"
             f"{expiring_employees_str}"
             "</pre>"
             "<p>Best regards,</p>"
