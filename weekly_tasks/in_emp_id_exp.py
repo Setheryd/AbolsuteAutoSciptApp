@@ -6,8 +6,6 @@ from pathlib import Path
 import win32com.client as win32  # type: ignore
 import logging
 
-
-
 def find_specific_file(base_path, filename, required_subpath, max_depth=5):
     """
     Search for a specific file within directories that contain a required subpath.
@@ -55,7 +53,6 @@ def find_specific_file(base_path, filename, required_subpath, max_depth=5):
 
     return scan_directory(base_path, 0)
 
-
 def get_column_index(ws, header_name):
     """
     Find the column index for a given header name in row 2.
@@ -73,7 +70,6 @@ def get_column_index(ws, header_name):
         if cell_value and cell_value.strip().lower() == header_name.strip().lower():
             return col
     return None
-
 
 def get_phone_number(employee_name, phone_sheet):
     """
@@ -94,7 +90,6 @@ def get_phone_number(employee_name, phone_sheet):
             return format_phone_number(phone_number) if phone_number else "Phone Number Not Available"
     return "Could not find Phone Number"
 
-
 def format_phone_number(phone_number):
     """
     Format the phone number to (555) 555-5555.
@@ -113,7 +108,6 @@ def format_phone_number(phone_number):
             return phone_number
     except:
         return phone_number
-
 
 def is_invalid_date(exp_date):
     """
@@ -135,7 +129,6 @@ def is_invalid_date(exp_date):
             return True
     except:
         return True
-
 
 def process_employee_audit(ws_active, phone_sheet):
     """
@@ -216,8 +209,6 @@ def process_employee_audit(ws_active, phone_sheet):
 
     return expiring_employees_str
 
-
-
 def get_signature_by_path(sig_path):
     """
     Retrieves the email signature from the specified file path.
@@ -235,6 +226,66 @@ def get_signature_by_path(sig_path):
     except Exception as e:
         logging.error(f"Unable to retrieve signature from {sig_path}: {e}")
         return None
+
+def get_default_outlook_email():
+    """
+    Retrieves the default Outlook email address of the current user.
+
+    Returns:
+        str: The default email address if available, otherwise None.
+    """
+    try:
+        outlook = win32.Dispatch("Outlook.Application")
+        namespace = outlook.GetNamespace("MAPI")
+        accounts = namespace.Accounts
+        if accounts.Count > 0:
+            # Outlook accounts are 1-indexed
+            default_account = accounts.Item(1)
+            return default_account.SmtpAddress
+        else:
+            logging.error("No Outlook accounts found.")
+            return None
+    except Exception as e:
+        logging.error(f"Unable to retrieve default Outlook email: {e}")
+        return None
+
+def get_default_signature():
+    """
+    Retrieves the user's default email signature based on their default Outlook account.
+
+    Returns:
+        str: The signature HTML content if available, otherwise None.
+    """
+    email = get_default_outlook_email()
+    if not email:
+        logging.error("Default Outlook email not found.")
+        return None
+
+    # Define the signature directory
+    appdata = os.environ.get('APPDATA')
+    if not appdata:
+        logging.error("APPDATA environment variable not found.")
+        return None
+
+    sig_dir = os.path.join(appdata, 'Microsoft', 'Signatures')
+    if not os.path.isdir(sig_dir):
+        logging.error(f"Signature directory does not exist: {sig_dir}")
+        return None
+
+    # Iterate through signature files to find a match
+    for filename in os.listdir(sig_dir):
+        if filename.lower().endswith(('.htm', '.html')):
+            # Extract the base name without extension
+            base_name = os.path.splitext(filename)[0].lower()
+            if email.lower() in base_name:
+                sig_path = os.path.join(sig_dir, filename)
+                signature = get_signature_by_path(sig_path)
+                if signature:
+                    logging.info(f"Signature found: {sig_path}")
+                    return signature
+
+    logging.error(f"No signature file found containing email: {email}")
+    return None
 
 def send_email(expiring_employees_str):
     """
@@ -262,12 +313,8 @@ def send_email(expiring_employees_str):
         )
         mail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
 
-        # Construct the signature path dynamically
-        signature_filename = "Absolute Signature (seth.riley@absolutecaregivers.com).htm"
-        sig_path = os.path.join(os.environ['APPDATA'], 'Microsoft', 'Signatures', signature_filename)
-
-        # Get the specified signature
-        signature = get_signature_by_path(sig_path)
+        # Get the default signature
+        signature = get_default_signature()
 
         # Compose the email body in HTML format with consistent font and size
         email_body = (
@@ -297,11 +344,11 @@ def send_email(expiring_employees_str):
         mail.Display(False)  # False to open the email without a modal dialog
         logging.info("Email composed and displayed successfully.")
         print("Email composed successfully.")
-        
+
     except Exception as e:
         logging.error(f"Failed to compose or display email: {e}")
         print(f"Failed to compose email: {e}")
-        
+
     finally:
         # Release COM objects to free up resources
         try:
@@ -312,8 +359,6 @@ def send_email(expiring_employees_str):
         except Exception as cleanup_error:
             logging.error(f"Error during cleanup: {cleanup_error}")
             print(f"Error during cleanup: {cleanup_error}")
-
-
 
 def extract_expiring_employees():
     """
@@ -404,7 +449,6 @@ def extract_expiring_employees():
     else:
         print("No expiring employees found.")
 
-
 def run_task():
     """
     Wrapper function to execute the extract_expiring_employees function.
@@ -416,6 +460,12 @@ def run_task():
     except Exception as e:
         raise e
 
-
 if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(
+        filename='in_emp_id_exp.log',
+        filemode='a',
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        level=logging.INFO
+    )
     extract_expiring_employees()
