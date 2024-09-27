@@ -1,11 +1,11 @@
 # main_app.py
 
-import win32com.client as win32
+import win32com.client as win32# type: ignore
 import os
 import sys
 import subprocess
 from datetime import datetime, timedelta
-from PySide6.QtWidgets import (
+from PySide6.QtWidgets import (# type: ignore
     QApplication,
     QWidget,
     QPushButton,
@@ -18,8 +18,8 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QSpacerItem
 )
-from PySide6.QtCore import Qt, QProcess, Slot
-from PySide6.QtGui import QMovie
+from PySide6.QtCore import Qt, QProcess, Slot # type: ignore
+from PySide6.QtGui import QMovie # type: ignore
 
 # Categorized items (already sorted alphabetically)
 daily_items = sorted([

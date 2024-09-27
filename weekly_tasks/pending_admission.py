@@ -1,6 +1,6 @@
 # weekly_tasks/pending_admission.py
 
-import win32com.client as win32
+import win32com.client as win32 # type: ignore
 import os
 from datetime import datetime
 import sys

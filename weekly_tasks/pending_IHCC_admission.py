@@ -1,6 +1,6 @@
 # weekly_tasks/pending_IHCC_admission.py
 
-import win32com.client as win32
+import win32com.client as win32 # type: ignore
 import os
 import sys
 

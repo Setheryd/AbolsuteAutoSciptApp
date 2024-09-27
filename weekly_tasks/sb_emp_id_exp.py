@@ -3,7 +3,7 @@
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-import win32com.client as win32
+import win32com.client as win32 # type: ignore
 
 
 def find_specific_file(base_path, filename, required_subpath, max_depth=5):
