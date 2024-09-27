@@ -266,7 +266,7 @@ def send_email(pending_admissions):
 
         # Compose the email body in HTML format
         email_body = (
-            "<p>Dear Team,</p>"
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><p>Dear Team,</p>"
             "<p>I hope this message finds you well.</p>"
             "<p>This is an automated reminder regarding pending PERS Installations. The following patients currently do not have an installation date and discharge date, and require your immediate attention:</p>"
             "<ul>"
@@ -274,8 +274,8 @@ def send_email(pending_admissions):
 
         # Add each patient name as a list item
         for patient in pending_admissions:
-            email_body += f"<li>{patient}</li>"
-        email_body += "</ul>"
+            email_body += f"<li style='font-family: Calibri, sans-serif; font-size: 11pt;'>{patient}</li>"
+        email_body += "</ul></div>"
 
         email_body += (
             "<p>Please review and update the patient records file accordingly. If you notice any discrepancies or have already addressed these admissions, kindly update the records to maintain accuracy.</p>"

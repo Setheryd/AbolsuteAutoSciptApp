@@ -279,11 +279,11 @@ def send_email(expiring_employees_str):
 
         # Compose the email body in HTML format with consistent font and size
         email_body = (
-            '<div style="font-family: Arial, sans-serif; font-size: 12pt;">'  # Start of styled div
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'>"  # Start of styled div
             "<p>Hi Kaitlyn,</p>"
             "<p>I hope this message finds you well.</p>"
             "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the employee audit checklist with their new expirations.</p>"
-            "<pre  style='font-family: Arial, sans-serif; font-size: 12pt;'>"
+            "<pre  style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
             f"{expiring_employees_str}"
             "</pre>"
             "<p>Best regards,</p>"
@@ -294,7 +294,7 @@ def send_email(expiring_employees_str):
         if signature:
             email_body += signature
         else:
-            email_body += "<p>Your Name<br>Your Title<br>Absolute Caregivers</p>"
+            email_body += "<p>{username}<br>Absolute Caregivers</p>"
 
         # Set the email body and format
         mail.HTMLBody = email_body

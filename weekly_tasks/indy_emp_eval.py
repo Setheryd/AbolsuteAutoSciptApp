@@ -132,10 +132,10 @@ def send_email(employees_str):
 
         # Compose the email body in HTML format
         email_body = (
-            "<p>Dear Kaitlyn,</p>"
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><p>Dear Kaitlyn,</p>"
             "<p>I hope this email finds you well. This is an automated reminder regarding the Indianapolis Employee Audit file.</p>"
             "<p>The following Indianapolis employees require evaluations as indicated in the audit file. "
-            "Please follow up with them and update the Indy Employee Audit file accordingly. Thank you for your hard work!</p>"
+            "Please follow up with them and update the Indy Employee Audit file accordingly. Thank you for your hard work!</p> </div>"
             "<ul>"
         )
 
@@ -150,7 +150,7 @@ def send_email(employees_str):
         if signature:
             email_body += signature
         else:
-            email_body += "<p>Your Name<br>Your Title<br>Absolute Caregivers</p>"
+            email_body += "<p>{username}<br>Absolute Caregivers</p>"
 
         # Set the email body and format
         outlookMail.HTMLBody = email_body

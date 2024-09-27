@@ -208,7 +208,7 @@ def send_email(pending_admissions):
 
         # Compose the email body in HTML format
         email_body = (
-            "<p>Dear Team,</p>"
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><p>Dear Team,</p>"
             "<p>I hope this message finds you well.</p>"
             "<p>This is an automated reminder regarding pending admissions. The following patients currently do not have an admission date and require your immediate attention:</p>"
             "<ul>"
@@ -222,14 +222,14 @@ def send_email(pending_admissions):
         email_body += (
             "<p>Please review and update the patient records file accordingly. If you notice any discrepancies or have already addressed these admissions, kindly update the records to maintain accuracy.</p>"
             "<p>Thank you for your prompt attention to this matter.</p>"
-            "<p>Best regards,</p>"
+            "<p>Best regards,</p></div>"
         )
 
         # Append the signature if available
         if signature:
             email_body += signature
         else:
-            email_body += "<p>Your Name<br>Your Title<br>Absolute Caregivers</p>"
+            email_body += "<p>{username}<br>Absolute Caregivers</p>"
 
         # Set the email body and format
         outlookMail.HTMLBody = email_body

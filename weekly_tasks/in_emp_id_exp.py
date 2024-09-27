@@ -6,6 +6,7 @@ from pathlib import Path
 import win32com.client as win32  # type: ignore
 
 
+
 def find_specific_file(base_path, filename, required_subpath, max_depth=5):
     """
     Search for a specific file within directories that contain a required subpath.
@@ -215,6 +216,25 @@ def process_employee_audit(ws_active, phone_sheet):
     return expiring_employees_str
 
 
+
+def get_signature_by_path(sig_path):
+    """
+    Retrieves the email signature from the specified file path.
+
+    Args:
+        sig_path (str): The full path to the signature file.
+
+    Returns:
+        str: The signature HTML content if available, otherwise None.
+    """
+    try:
+        with open(sig_path, 'r', encoding='utf-8') as file:
+            signature = file.read()
+        return signature
+    except Exception as e:
+        logging.error(f"Unable to retrieve signature from {sig_path}: {e}")
+        return None
+
 def send_email(expiring_employees_str):
     """
     Compose and send an email via Outlook with the list of expiring employees.
@@ -223,21 +243,75 @@ def send_email(expiring_employees_str):
         expiring_employees_str (str): The formatted string of expiring employees.
     """
     try:
-        outlookApp = win32.Dispatch('Outlook.Application')
-        outlookMail = outlookApp.CreateItem(0)
-        outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
-        outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
-        outlookMail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
-        outlookMail.Body = (
-            "Hi Kaitlyn,\n\n"
-            "Here is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the employee audit checklist with their new expirations.\n\n"
-            f"{expiring_employees_str}"
-            "Best regards,"
+        # Initialize Outlook application object using DispatchEx for better performance
+        outlookApp = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
+        mail = outlookApp.CreateItem(0)  # 0: olMailItem
+
+        # Define recipients
+        mail.To = (
+            "alejandra.gamboa@absolutecaregivers.com; "
+            "kaitlyn.moss@absolutecaregivers.com; "
+            "raegan.lopez@absolutecaregivers.com; "
+            "ulyana.stokolosa@absolutecaregivers.com"
         )
-        outlookMail.Display()  # Change to .Send() to send automatically without displaying
+        mail.CC = (
+            "alexander.nazarov@absolutecaregivers.com; "
+            "luke.kitchel@absolutecaregivers.com; "
+            "thea.banks@absolutecaregivers.com"
+        )
+        mail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
+
+        # Construct the signature path dynamically
+        signature_filename = "Absolute Signature (seth.riley@absolutecaregivers.com).htm"
+        sig_path = os.path.join(os.environ['APPDATA'], 'Microsoft', 'Signatures', signature_filename)
+
+        # Get the specified signature
+        signature = get_signature_by_path(sig_path)
+
+        # Compose the email body in HTML format with consistent font and size
+        email_body = (
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
+            "<p>Hi Kaitlyn,</p>"
+            "<p>I hope this message finds you well.</p>"
+            "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. "
+            "Please contact them. Once resolved, update the employee audit checklist with their new expirations.</p>"
+            "<pre style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
+            f"{expiring_employees_str}"
+            "</pre>"
+            "<p>Best regards,</p>"
+            "</div>"
+        )
+
+        # Append the signature if available
+        if signature:
+            email_body += signature
+        else:
+            # Fallback signature if the specific signature file is not found
+            email_body += "<p>Your Name<br>Absolute Caregivers</p>"
+
+        # Set the email body and format
+        mail.HTMLBody = email_body
+
+        # Display the email for manual review before sending
+        mail.Display(False)  # False to open the email without a modal dialog
+        logging.info("Email composed and displayed successfully.")
         print("Email composed successfully.")
+        
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        logging.error(f"Failed to compose or display email: {e}")
+        print(f"Failed to compose email: {e}")
+        
+    finally:
+        # Release COM objects to free up resources
+        try:
+            if 'mail' in locals() and mail:
+                del mail
+            if 'outlookApp' in locals() and outlookApp:
+                del outlookApp
+        except Exception as cleanup_error:
+            logging.error(f"Error during cleanup: {cleanup_error}")
+            print(f"Error during cleanup: {cleanup_error}")
+
 
 
 def extract_expiring_employees():
