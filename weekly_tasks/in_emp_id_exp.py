@@ -286,7 +286,8 @@ def extract_expiring_employees():
         excel.Visible = False
 
         # Open the Audit Workbook
-        wb_audit = excel.Workbooks.Open(audit_file, Password="abs$1004$N", ReadOnly=True)
+        # Modified to pass parameters positionally up to Password
+        wb_audit = excel.Workbooks.Open(audit_file, False, True, None, "abs$1004$N")
         ws_active = wb_audit.Sheets("Active")
         print("Employee Audit Checklist workbook opened successfully.")
     except Exception as e:
@@ -295,7 +296,8 @@ def extract_expiring_employees():
 
     try:
         # Open the Demographics Workbook
-        wb_demographics = excel.Workbooks.Open(demographics_file, Password="abs$1004$N", ReadOnly=True)
+        # Modified to pass parameters positionally up to Password
+        wb_demographics = excel.Workbooks.Open(demographics_file, False, True, None, "abs$1004$N")
         phone_sheet = wb_demographics.Sheets("Contractor_Employee")
         print("Absolute Employee Demographics workbook opened successfully.")
     except Exception as e:
