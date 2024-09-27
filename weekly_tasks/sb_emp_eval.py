@@ -1,4 +1,4 @@
-# weekly_tasks/indy_emp_eval.py
+# weekly_tasks/sb_emp_eval.py
 
 import win32com.client as win32 # type:ignore
 import os
@@ -120,7 +120,7 @@ def send_email(employees_str):
         outlookMail = outlookApp.CreateItem(0)
         outlookMail.To = "alejandra.gamboa@absolutecaregivers.com; kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
         outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com; thea.banks@absolutecaregivers.com"
-        outlookMail.Subject = "Indianapolis Employee Evaluation Reminder"
+        outlookMail.Subject = "South Bend Employee Evaluation Reminder"
 
         # Construct the signature path dynamically
         username = os.getlogin()
@@ -132,9 +132,9 @@ def send_email(employees_str):
 
         # Compose the email body in HTML format
         email_body = (
-            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><p>Dear Kaitlyn,</p>"
-            "<p>I hope this email finds you well. This is an automated reminder regarding the Indianapolis Employee Audit file.</p>"
-            "<p>The following Indianapolis employees require evaluations as indicated in the audit file. "
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><p>Dear Alli,</p>"
+            "<p>I hope this email finds you well. This is an automated reminder regarding the South Bend Employee Audit file.</p>"
+            "<p>The following South Bend employees require evaluations as indicated in the audit file. "
             "Please follow up with them and update the Indy Employee Audit file accordingly. Thank you for your hard work!</p> </div>"
             "<ul>"
         )

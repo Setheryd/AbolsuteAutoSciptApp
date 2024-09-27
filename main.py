@@ -329,6 +329,12 @@ class MainApp(QWidget):
             elif item == "IN Emp EVAL EXP":
                 button.setObjectName("in_emp_eval_exp")  # Assign a unique object name
                 button.clicked.connect(self.run_indy_emp_eval)
+            elif item == "SB EMP EVAL EXP":  # New condition added
+                button.setObjectName("sb_emp_eval_exp")  # Assign a unique object name
+                button.clicked.connect(self.run_sb_emp_eval)  # Connect to existing method
+            elif item == "SB ID EXP":
+                button.setObjectName("sb_id_exp")
+                button.clicked.connect(self.run_sb_id_exp)
             elif item == "Pending Admission":
                 button.setObjectName("pending_admission")
                 button.clicked.connect(self.run_pending_admission)
@@ -375,6 +381,7 @@ class MainApp(QWidget):
             
             # Add the button to the layout with horizontal center alignment
             self.button_layout.addWidget(button, alignment=Qt.AlignHCenter)
+
 
 
     def select_subcategory(self, button):
@@ -557,6 +564,63 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
+
+
+    def run_sb_emp_eval(self):
+        """
+        Execute the sb_emp_eval.py script when the "SB EMP EVAL EXP" button is clicked.
+        """
+        try:
+            # Determine the path to the sb_emp_eval.py script
+            script_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 
+                "weekly_tasks", 
+                "sb_emp_eval.py"
+            )
+            
+            if not os.path.exists(script_path):
+                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
+                return
+            
+            # Disable the sub-category buttons to prevent multiple executions
+            self.set_buttons_enabled(False)
+            
+            # Show the animation and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            
+            # Clear previous logs
+            self.log_text.clear()
+            
+            # Initialize QProcess
+            self.process = QProcess(self)
+            self.process.setProgram(sys.executable)
+            # Use the '-u' flag to force unbuffered output
+            self.process.setArguments(['-u', script_path])
+            
+            # Connect signals
+            self.process.readyReadStandardOutput.connect(self.handle_stdout)
+            self.process.readyReadStandardError.connect(self.handle_stderr)
+            self.process.finished.connect(self.process_finished)
+            
+            # Start the process
+            self.process.start()
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self, 
+                "Exception", 
+                f"An error occurred while executing the script:\n{str(e)}"
+            )
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
+            
 
     def run_pending_admission(self):
         """
