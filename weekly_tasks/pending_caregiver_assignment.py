@@ -1,6 +1,6 @@
 # weekly_tasks/pending_admission_caregiver.py
 
-import win32com.client as win32 # type: ignore
+import win32com.client as win32  # type: ignore
 import os
 from datetime import datetime
 import sys
@@ -106,14 +106,16 @@ def extract_pending_admissions():
     password = "abs$1018$B"
 
     try:
-        # Initialize Excel application object
-        excel = win32.Dispatch("Excel.Application")
+        # Initialize Excel application object using DispatchEx
+        excel = win32.DispatchEx("Excel.Application")  # Changed from Dispatch to DispatchEx
         excel.DisplayAlerts = False
         excel.Visible = False
         print("Excel application object created successfully.")
 
         # Open the workbook in read-only mode with password
-        wb = excel.Workbooks.Open(file_path, Password=password, ReadOnly=True)
+        # Pass parameters positionally up to Password
+        # Excel.Workbooks.Open(Filename, UpdateLinks, ReadOnly, Format, Password, ...)
+        wb = excel.Workbooks.Open(file_path, False, True, None, password)  # Changed to positional parameters
         print(f"Workbook {filename} opened successfully.")
 
         # Access the 'Patient Information' sheet
@@ -201,7 +203,7 @@ def send_email(pending_admissions):
         pending_admissions (list): The list of patient names with pending admissions.
     """
     try:
-        outlookApp = win32.Dispatch('Outlook.Application')
+        outlookApp = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
         outlookMail = outlookApp.CreateItem(0)
         outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
         outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
@@ -257,6 +259,17 @@ def main():
         send_email(pending_admissions)
     else:
         print("No patients with pending admissions found.")
+
+def run_task():
+    """
+    Wrapper function to execute the main function.
+    Returns the result string or raises an exception.
+    """
+    try:
+        result = main()
+        return result
+    except Exception as e:
+        raise e
 
 if __name__ == "__main__":
     main()

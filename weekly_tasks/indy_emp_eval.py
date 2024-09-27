@@ -66,7 +66,7 @@ def process_evaluation_expirations(ws_active):
         return ""
 
     # Find the last row in the sheet based on the 'Eval Required' column
-    last_row_eval = ws_active.Cells(ws_active.Rows.Count, eval_col).End(-4162).Row
+    last_row_eval = ws_active.Cells(ws_active.Rows.Count, eval_col).End(-4162).Row  # -4162 corresponds to xlUp
 
     print(f"Last row in 'Active' sheet: {last_row_eval}")
 
@@ -116,7 +116,7 @@ def send_email(employees_str):
         employees_str (str): The formatted string of employees.
     """
     try:
-        outlookApp = win32.Dispatch('Outlook.Application')
+        outlookApp = win32.DispatchEx('Outlook.Application')  # Use DispatchEx
         outlookMail = outlookApp.CreateItem(0)
         outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
         outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
@@ -187,12 +187,14 @@ def extract_evaluation_expirations():
     print(f"Found Employee Audit Checklist.xlsm at: {audit_file}")
 
     try:
-        excel = win32.Dispatch("Excel.Application")
+        excel = win32.DispatchEx("Excel.Application")  # Use DispatchEx
         excel.DisplayAlerts = False
         excel.Visible = False
 
         # Open the Audit Workbook
-        wb_audit = excel.Workbooks.Open(audit_file, Password="abs$1004$N", ReadOnly=True)
+        # Pass parameters positionally up to Password
+        # Excel.Workbooks.Open(Filename, UpdateLinks, ReadOnly, Format, Password, ...)
+        wb_audit = excel.Workbooks.Open(audit_file, False, True, None, "abs$1004$N")
         ws_active = wb_audit.Sheets("Active")
         print("Employee Audit Checklist workbook opened successfully.")
     except Exception as e:

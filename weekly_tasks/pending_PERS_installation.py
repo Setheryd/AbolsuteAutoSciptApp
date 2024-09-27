@@ -1,9 +1,17 @@
 # weekly_tasks/pending_PERS_Installation.py
 
-import win32com.client as win32 # type: ignore
+import win32com.client as win32  # type: ignore
 import os
 import sys
+import logging
+from datetime import datetime
 
+# Configure logging
+logging.basicConfig(
+    filename='pending_PERS_Installation.log',
+    level=logging.INFO,
+    format='%(asctime)s:%(levelname)s:%(message)s'
+)
 
 def find_specific_file(base_path, filename, required_subpath, max_depth=5):
     """
@@ -18,6 +26,7 @@ def find_specific_file(base_path, filename, required_subpath, max_depth=5):
     Returns:
         str or None: The full path to the found file, or None if not found.
     """
+    logging.info(f"Searching for '{filename}' within directories containing '{required_subpath}' in '{base_path}'...")
     print(f"Searching for '{filename}' within directories containing '{required_subpath}' in '{base_path}'...")
 
     def scan_directory(path, current_depth):
@@ -31,9 +40,11 @@ def find_specific_file(base_path, filename, required_subpath, max_depth=5):
                     if entry.is_file() and entry.name.lower() == filename.lower():
                         # Check if the required_subpath is in the file's directory path
                         if required_subpath.lower() in os.path.dirname(entry.path).lower():
+                            logging.info(f"Found '{filename}' at: {entry.path}")
                             print(f"Found '{filename}' at: {entry.path}")
                             return entry.path
                         else:
+                            logging.info(f"Found '{filename}' at '{entry.path}', but it does not contain '{required_subpath}' in its path. Skipping.")
                             print(f"Found '{filename}' at '{entry.path}', but it does not contain '{required_subpath}' in its path. Skipping.")
                     elif entry.is_dir():
                         found_file = scan_directory(entry.path, current_depth + 1)
@@ -41,8 +52,15 @@ def find_specific_file(base_path, filename, required_subpath, max_depth=5):
                             return found_file
         except PermissionError:
             # Skip directories that are not accessible
+            logging.warning(f"Permission denied: '{path}'")
             print(f"Permission denied: '{path}'")
             return None
+        except Exception as e:
+            logging.error(f"Error accessing '{path}': {e}")
+            print(f"Error accessing '{path}': {e}")
+            return None
+
+        return None
 
     return scan_directory(base_path, 0)
 
@@ -61,10 +79,13 @@ def get_signature_by_path(signature_path):
         if os.path.exists(signature_path):
             with open(signature_path, 'r', encoding='utf-8') as f:
                 signature = f.read()
+            logging.info(f"Signature found at '{signature_path}'")
             return signature
         else:
+            logging.warning(f"Signature file not found at '{signature_path}'")
             print(f"Signature file not found at '{signature_path}'")
     except Exception as e:
+        logging.error(f"Failed to get Outlook signature: {e}")
         print(f"Failed to get Outlook signature: {e}")
     return ""
 
@@ -80,17 +101,21 @@ def extract_pending_admissions():
     try:
         username = os.getlogin()
     except Exception as e:
+        logging.error(f"Failed to get the current username: {e}")
         print(f"Failed to get the current username: {e}")
         return []
 
+    logging.info(f"Current username: '{username}'")
     print(f"Current username: '{username}'")
 
     # Construct the base path using the username
     base_path = f"C:\\Users\\{username}\\OneDrive - Ability Home Health, LLC\\"
+    logging.info(f"Base path: '{base_path}'")
     print(f"Base path: '{base_path}'")
 
     # Check if base path exists
     if not os.path.exists(base_path):
+        logging.warning(f"Base path '{base_path}' does not exist.")
         print(f"Base path '{base_path}' does not exist.")
         return []
 
@@ -102,30 +127,37 @@ def extract_pending_admissions():
     # The expected path: C:\Users\{username}\OneDrive - Ability Home Health, LLC\{unknown}\IHCC\Absolute Patient Records PERS.xlsm
     file_path = find_specific_file(base_path, filename, required_subpath)
     if file_path is None:
+        logging.warning(f"File '{filename}' not found within directories containing '{required_subpath}' starting from '{base_path}'.")
         print(f"File '{filename}' not found within directories containing '{required_subpath}' starting from '{base_path}'.")
         return []
 
-    # Password is hardcoded as per user request
-    password = "abs$1018$B"
+    # It's recommended to use environment variables or secure storage for passwords
+    # For demonstration purposes, it's hardcoded here
+    password = os.getenv('EXCEL_PASSWORD', 'abs$1018$B')  # Replace with environment variable if possible
 
     excel = None
     wb = None
 
     try:
-        # Initialize Excel application object
-        excel = win32.Dispatch("Excel.Application")
+        # Initialize Excel application object using DispatchEx
+        excel = win32.DispatchEx("Excel.Application")  # Changed from Dispatch to DispatchEx
         excel.DisplayAlerts = False  # Disable Excel alerts
         excel.Visible = False        # Make Excel invisible
         excel.ScreenUpdating = False # Prevent screen updates
         excel.EnableEvents = False    # Disable events
+        logging.info("Excel application object created successfully.")
         print("Excel application object created successfully.")
 
         # Open the workbook in read-only mode with password
-        wb = excel.Workbooks.Open(file_path, Password=password, ReadOnly=True)
+        # Pass parameters positionally up to Password
+        # Excel.Workbooks.Open(Filename, UpdateLinks, ReadOnly, Format, Password, ...)
+        wb = excel.Workbooks.Open(file_path, False, True, None, password)  # Changed to positional parameters
+        logging.info(f"Workbook '{filename}' opened successfully.")
         print(f"Workbook '{filename}' opened successfully.")
 
         # Access the 'Patient Information' sheet
         ws = wb.Sheets("Patient Information")
+        logging.info(f"Accessed 'Patient Information' sheet in '{filename}'.")
         print(f"Accessed 'Patient Information' sheet in '{filename}'.")
 
         # Identify the required columns by header names in the first row
@@ -142,12 +174,18 @@ def extract_pending_admissions():
         # Check for missing headers
         missing_headers = [req for req in required_headers if req.lower() not in headers]
         if missing_headers:
+            logging.warning(f"Required columns {missing_headers} not found in the sheet.")
             print(f"Required columns {missing_headers} not found in the sheet.")
+            wb.Close(SaveChanges=False)
             return []
 
         installation_date_col = headers["installation date"]
         name_col = headers["name"]
         discharge_date_col = headers["discharge date"]
+
+        logging.info(f"Installation Date column index: {installation_date_col}")
+        logging.info(f"Name column index: {name_col}")
+        logging.info(f"Discharge Date column index: {discharge_date_col}")
 
         print(f"Installation Date column index: {installation_date_col}")
         print(f"Name column index: {name_col}")
@@ -155,6 +193,7 @@ def extract_pending_admissions():
 
         # Determine the last row with data in the Installation Date column
         last_row = ws.Cells(ws.Rows.Count, installation_date_col).End(-4162).Row  # -4162 corresponds to xlUp
+        logging.info(f"Last row with data: {last_row}")
         print(f"Last row with data: {last_row}")
 
         pending_admissions = []
@@ -170,10 +209,12 @@ def extract_pending_admissions():
                 if installation_blank and discharge_blank:
                     pending_admissions.append(patient_name.strip())
 
+        logging.info(f"Number of patients with pending PERS installations: {len(pending_admissions)}")
         print(f"Number of patients with pending PERS installations: {len(pending_admissions)}")
         return pending_admissions
 
     except Exception as e:
+        logging.error(f"An error occurred while processing '{file_path}': {e}")
         print(f"An error occurred while processing '{file_path}': {e}")
         return []
 
@@ -181,9 +222,11 @@ def extract_pending_admissions():
         # Ensure that the workbook and Excel application are properly closed
         if wb:
             wb.Close(SaveChanges=False)
+            logging.info(f"Workbook '{filename}' closed successfully.")
             print(f"Workbook '{filename}' closed successfully.")
         if excel:
             excel.Quit()
+            logging.info("Excel application closed successfully.")
             print("Excel application closed successfully.")
         # Release COM objects
         if excel:
@@ -205,8 +248,8 @@ def send_email(pending_admissions):
     mail = None
 
     try:
-        # Initialize Outlook application object
-        outlook = win32.Dispatch('Outlook.Application')
+        # Initialize Outlook application object using DispatchEx
+        outlook = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
         mail = outlook.CreateItem(0)  # 0: olMailItem
 
         # Corrected email recipient formatting by removing trailing space
@@ -251,8 +294,10 @@ def send_email(pending_admissions):
 
         # Display the email for manual curation before sending
         mail.Display(False)  # False to open the email without modal dialog
+        logging.info("Email displayed successfully.")
         print("Email displayed successfully.")
     except Exception as e:
+        logging.error(f"Failed to send email: {e}")
         print(f"Failed to send email: {e}")
     finally:
         # Release COM objects
@@ -270,7 +315,21 @@ def main():
     if pending_admissions:
         send_email(pending_admissions)
     else:
+        logging.info("No PERS patients with pending installations found.")
         print("No PERS patients with pending installations found.")
+
+
+def run_task():
+    """
+    Wrapper function to execute the main function.
+    Returns the result string or raises an exception.
+    """
+    try:
+        result = main()
+        return result
+    except Exception as e:
+        logging.error(f"An error occurred in run_task: {e}")
+        raise e
 
 
 if __name__ == "__main__":

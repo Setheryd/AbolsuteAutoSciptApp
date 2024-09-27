@@ -1,9 +1,19 @@
 # weekly_tasks/sb_emp_id_exp.py
 
+import win32com.client as win32  # type: ignore
 import os
+import sys
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-import win32com.client as win32 # type: ignore
+
+
+# Configure logging
+logging.basicConfig(
+    filename='sb_emp_id_exp.log',
+    level=logging.INFO,
+    format='%(asctime)s:%(levelname)s:%(message)s'
+)
 
 
 def find_specific_file(base_path, filename, required_subpath, max_depth=5):
@@ -20,6 +30,7 @@ def find_specific_file(base_path, filename, required_subpath, max_depth=5):
         str or None: The full path to the found file, or None if not found.
     """
     base_path = Path(base_path)  # Ensure base_path is a Path object
+    logging.info(f"Searching for '{filename}' within directories containing '{required_subpath}' in '{base_path}'...")
     print(f"Searching for '{filename}' within directories containing '{required_subpath}' in '{base_path}'...")
 
     def scan_directory(path, current_depth):
@@ -33,9 +44,11 @@ def find_specific_file(base_path, filename, required_subpath, max_depth=5):
                     if entry.is_file() and entry.name.lower() == filename.lower():
                         # Check if the required_subpath is in the file's directory path
                         if required_subpath.lower() in os.path.dirname(entry.path).lower():
+                            logging.info(f"Found '{filename}' at: {entry.path}")
                             print(f"Found '{filename}' at: {entry.path}")
                             return entry.path
                         else:
+                            logging.info(f"Found '{filename}' at '{entry.path}', but it does not contain '{required_subpath}' in its path. Skipping.")
                             print(f"Found '{filename}' at '{entry.path}', but it does not contain '{required_subpath}' in its path. Skipping.")
                     elif entry.is_dir():
                         found_file = scan_directory(entry.path, current_depth + 1)
@@ -43,10 +56,12 @@ def find_specific_file(base_path, filename, required_subpath, max_depth=5):
                             return found_file
         except PermissionError:
             # Skip directories that are not accessible
-            print(f"Permission denied: {path}")
+            logging.warning(f"Permission denied: '{path}'")
+            print(f"Permission denied: '{path}'")
             return None
         except Exception as e:
-            print(f"Error accessing {path}: {e}")
+            logging.error(f"Error accessing '{path}': {e}")
+            print(f"Error accessing '{path}': {e}")
             return None
 
         return None
@@ -157,10 +172,12 @@ def process_employee_audit(ws_active, phone_sheet):
     id_exp_col = get_column_index(ws_active, id_exp_header)
 
     if not name_col or not id_exp_col:
+        logging.warning("Required headers not found in 'Active' sheet.")
         print("Required headers not found in 'Active' sheet.")
         return ""
 
     last_row = ws_active.Cells(ws_active.Rows.Count, name_col).End(-4162).Row  # -4162 corresponds to xlUp
+    logging.info(f"Last row in 'Active' sheet: {last_row}")
     print(f"Last row in 'Active' sheet: {last_row}")
 
     for i in range(3, last_row + 1):
@@ -223,21 +240,54 @@ def send_email(expiring_employees_str):
         expiring_employees_str (str): The formatted string of expiring employees.
     """
     try:
-        outlookApp = win32.Dispatch('Outlook.Application')
-        outlookMail = outlookApp.CreateItem(0)
-        outlookMail.To = "alejandra.gamboa@absolutecaregivers.com; kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
-        outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com; thea.banks@absolutecaregivers.com"
-        outlookMail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
-        outlookMail.Body = (
-            "Hi Kaitlyn,\n\n"
-            "Here is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the employee audit checklist with their new expirations.\n\n"
+        # Initialize Outlook application object using DispatchEx
+        outlookApp = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
+        mail = outlookApp.CreateItem(0)  # 0: olMailItem
+
+        mail.To = "alejandra.gamboa@absolutecaregivers.com; kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
+        mail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com; thea.banks@absolutecaregivers.com"
+        mail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
+
+        # Construct the signature path dynamically
+        signature_filename = "Absolute Signature (seth.riley@absolutecaregivers.com).htm"
+        sig_path = os.path.join(os.environ['APPDATA'], 'Microsoft', 'Signatures', signature_filename)
+
+        # Get the specified signature
+        signature = get_signature_by_path(sig_path)
+
+        # Compose the email body in HTML format
+        email_body = (
+            "<p>Hi Kaitlyn,</p>"
+            "<p>I hope this message finds you well.</p>"
+            "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the employee audit checklist with their new expirations.</p>"
+            "<pre>"
             f"{expiring_employees_str}"
-            "Best regards,"
+            "</pre>"
+            "<p>Best regards,</p>"
         )
-        outlookMail.Display()  # Change to .Send() to send automatically without displaying
+
+        # Append the signature if available
+        if signature:
+            email_body += signature
+        else:
+            email_body += "<p>Your Name<br>Your Title<br>Absolute Caregivers</p>"
+
+        # Set the email body and format
+        mail.HTMLBody = email_body
+
+        # Display the email for manual curation before sending
+        mail.Display(False)  # False to open the email without modal dialog
+        logging.info("Email displayed successfully.")
         print("Email composed successfully.")
     except Exception as e:
+        logging.error(f"Failed to send email: {e}")
         print(f"Failed to send email: {e}")
+    finally:
+        # Release COM objects
+        if 'mail' in locals() and mail:
+            del mail
+        if 'outlookApp' in locals() and outlookApp:
+            del outlookApp
 
 
 def extract_expiring_employees():
@@ -247,17 +297,21 @@ def extract_expiring_employees():
     try:
         username = os.getlogin()
     except Exception as e:
+        logging.error(f"Failed to get the current username: {e}")
         print(f"Failed to get the current username: {e}")
         return
 
-    print(f"Current username: {username}")
+    logging.info(f"Current username: '{username}'")
+    print(f"Current username: '{username}'")
 
     base_path = Path(f"C:/Users/{username}/OneDrive - Ability Home Health, LLC/")
-    print(f"Base path: {base_path}")
+    logging.info(f"Base path: '{base_path}'")
+    print(f"Base path: '{base_path}'")
 
     # Check if base path exists
     if not base_path.exists():
-        print(f"Base path {base_path} does not exist.")
+        logging.warning(f"Base path '{base_path}' does not exist.")
+        print(f"Base path '{base_path}' does not exist.")
         return
 
     # Define the exact filenames to search for
@@ -273,32 +327,49 @@ def extract_expiring_employees():
     demographics_file = find_specific_file(base_path, demographics_filename, demographics_required_subpath)
 
     if not audit_file or not demographics_file:
+        logging.warning("Required files not found in specified directories.")
         print("Required files not found in specified directories.")
         return
 
+    logging.info(f"Found {audit_filename} at: {audit_file}")
+    logging.info(f"Found {demographics_filename} at: {demographics_file}")
     print(f"Found {audit_filename} at: {audit_file}")
     print(f"Found {demographics_filename} at: {demographics_file}")
 
     try:
-        excel = win32.Dispatch("Excel.Application")
-        excel.DisplayAlerts = False
-        excel.Visible = False
+        # Initialize Excel application object using DispatchEx
+        excel = win32.DispatchEx("Excel.Application")  # Changed from Dispatch to DispatchEx
+        excel.DisplayAlerts = False  # Disable Excel alerts
+        excel.Visible = False        # Make Excel invisible
+        logging.info("Excel application object created successfully.")
+        print("Excel application object created successfully.")
 
-        # Open the Audit Workbook
-        wb_audit = excel.Workbooks.Open(audit_file, Password="abs$1004$N", ReadOnly=True)
+        # It's recommended to use environment variables or secure storage for passwords
+        # For demonstration purposes, it's hardcoded here
+        password = os.getenv('EXCEL_PASSWORD', 'abs$1004$N')  # Replace with environment variable if possible
+
+        # Open the Audit Workbook in read-only mode with password
+        # Pass parameters positionally up to Password
+        # Excel.Workbooks.Open(Filename, UpdateLinks, ReadOnly, Format, Password, ...)
+        wb_audit = excel.Workbooks.Open(audit_file, False, True, None, password)  # Changed to positional parameters
         ws_active = wb_audit.Sheets("Active")
-        print("Employee Audit Checklist workbook opened successfully.")
+        logging.info(f"Employee Audit Checklist workbook '{audit_filename}' opened successfully.")
+        print(f"Employee Audit Checklist workbook '{audit_filename}' opened successfully.")
+
     except Exception as e:
-        print(f"Failed to open {audit_filename}: {e}")
+        logging.error(f"Failed to open '{audit_filename}': {e}")
+        print(f"Failed to open '{audit_filename}': {e}")
         return
 
     try:
-        # Open the Demographics Workbook
-        wb_demographics = excel.Workbooks.Open(demographics_file, Password="abs$1004$N", ReadOnly=True)
+        # Open the Demographics Workbook in read-only mode with password
+        wb_demographics = excel.Workbooks.Open(demographics_file, False, True, None, password)  # Changed to positional parameters
         phone_sheet = wb_demographics.Sheets("Contractor_Employee")
-        print("Employee Demographics workbook opened successfully.")
+        logging.info(f"Employee Demographics workbook '{demographics_filename}' opened successfully.")
+        print(f"Employee Demographics workbook '{demographics_filename}' opened successfully.")
     except Exception as e:
-        print(f"Failed to open {demographics_filename}: {e}")
+        logging.error(f"Failed to open '{demographics_filename}': {e}")
+        print(f"Failed to open '{demographics_filename}': {e}")
         try:
             wb_audit.Close(SaveChanges=False)
         except:
@@ -316,14 +387,17 @@ def extract_expiring_employees():
         wb_audit.Close(SaveChanges=False)
         excel.Quit()
         del excel
+        logging.info("All workbooks closed successfully.")
         print("All workbooks closed successfully.")
     except Exception as e:
+        logging.error(f"Failed to close workbooks: {e}")
         print(f"Failed to close workbooks: {e}")
 
     # Send email if there are expiring employees
     if expiring_employees_str.strip():
         send_email(expiring_employees_str)
     else:
+        logging.info("No expiring employees found.")
         print("No expiring employees found.")
 
 
@@ -335,6 +409,7 @@ def run_task():
     try:
         extract_expiring_employees()
     except Exception as e:
+        logging.error(f"An error occurred in run_task: {e}")
         raise e
 
 
