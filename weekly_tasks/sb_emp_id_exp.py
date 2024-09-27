@@ -1,4 +1,4 @@
-# weekly_tasks/in_care_id_exp.py
+# weekly_tasks/sb_emp_id_exp.py
 
 import os
 from datetime import datetime, timedelta
@@ -225,8 +225,8 @@ def send_email(expiring_employees_str):
     try:
         outlookApp = win32.Dispatch('Outlook.Application')
         outlookMail = outlookApp.CreateItem(0)
-        outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
-        outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
+        outlookMail.To = "alejandra.gamboa@absolutecaregivers.com; kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
+        outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com; thea.banks@absolutecaregivers.com"
         outlookMail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
         outlookMail.Body = (
             "Hi Kaitlyn,\n\n"
@@ -261,8 +261,8 @@ def extract_expiring_employees():
         return
 
     # Define the exact filenames to search for
-    audit_filename = "Employee Audit Checklist.xlsm"
-    demographics_filename = "Absolute Employee Demographics.xlsm"  # Ensure this matches the actual filename
+    audit_filename = "Employee Audit Checklist South Bend.xlsm"
+    demographics_filename = "Absolute Employee Demographics.xlsm"
 
     # Define the required subpaths for each file
     audit_required_subpath = "Documents Audit Files"
@@ -296,7 +296,7 @@ def extract_expiring_employees():
         # Open the Demographics Workbook
         wb_demographics = excel.Workbooks.Open(demographics_file, Password="abs$1004$N", ReadOnly=True)
         phone_sheet = wb_demographics.Sheets("Contractor_Employee")
-        print("Absolute Employee Demographics workbook opened successfully.")
+        print("Employee Demographics workbook opened successfully.")
     except Exception as e:
         print(f"Failed to open {demographics_filename}: {e}")
         try:
@@ -333,8 +333,7 @@ def run_task():
     Returns the result string or raises an exception.
     """
     try:
-        result = extract_expiring_employees()
-        return result
+        extract_expiring_employees()
     except Exception as e:
         raise e
 
