@@ -352,6 +352,12 @@ class MainApp(QWidget):
             elif item == "SB PAT SUP EXP":  # Added condition for "SB PAT SUP EXP"
                 button.setObjectName("sb_pat_sup_exp")  # Assign a unique object name
                 button.clicked.connect(self.run_sb_pat_sup_exp)  # Connect to the new method
+            elif item == "SB Emp Inservices Exp":  
+                button.setObjectName("sb_emp_inservices_exp")  
+                button.clicked.connect(self.run_sb_emp_inservices_exp)  
+            elif item == "IN Emp In-Services EXP":  
+                button.setObjectName("in_emp_inservices_exp")  
+                button.clicked.connect(self.run_in_emp_inservices_exp)  
             else:
                 button.clicked.connect(self.show_message)
             
@@ -618,6 +624,117 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
+
+    def run_sb_emp_inservices_exp(self):
+        """
+        Execute the sb_emp_eval.py script when the "SB EMP EVAL EXP" button is clicked.
+        """
+        try:
+            # Determine the path to the sb_emp_eval.py script
+            script_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 
+                "weekly_tasks", 
+                "sb_emp_inservices_exp.py"
+            )
+            
+            if not os.path.exists(script_path):
+                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
+                return
+            
+            # Disable the sub-category buttons to prevent multiple executions
+            self.set_buttons_enabled(False)
+            
+            # Show the animation and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            
+            # Clear previous logs
+            self.log_text.clear()
+            
+            # Initialize QProcess
+            self.process = QProcess(self)
+            self.process.setProgram(sys.executable)
+            # Use the '-u' flag to force unbuffered output
+            self.process.setArguments(['-u', script_path])
+            
+            # Connect signals
+            self.process.readyReadStandardOutput.connect(self.handle_stdout)
+            self.process.readyReadStandardError.connect(self.handle_stderr)
+            self.process.finished.connect(self.process_finished)
+            
+            # Start the process
+            self.process.start()
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self, 
+                "Exception", 
+                f"An error occurred while executing the script:\n{str(e)}"
+            )
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
+
+    def run_in_emp_inservices_exp(self):
+        """
+        Execute the in_emp_inservices_exp.py script when the "IN Emp In-Services EXP" button is clicked.
+        """
+        try:
+            # Determine the path to the sb_emp_eval.py script
+            script_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 
+                "weekly_tasks", 
+                "in_emp_inservices_exp.py"
+            )
+            
+            if not os.path.exists(script_path):
+                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
+                return
+            
+            # Disable the sub-category buttons to prevent multiple executions
+            self.set_buttons_enabled(False)
+            
+            # Show the animation and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            
+            # Clear previous logs
+            self.log_text.clear()
+            
+            # Initialize QProcess
+            self.process = QProcess(self)
+            self.process.setProgram(sys.executable)
+            # Use the '-u' flag to force unbuffered output
+            self.process.setArguments(['-u', script_path])
+            
+            # Connect signals
+            self.process.readyReadStandardOutput.connect(self.handle_stdout)
+            self.process.readyReadStandardError.connect(self.handle_stderr)
+            self.process.finished.connect(self.process_finished)
+            
+            # Start the process
+            self.process.start()
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self, 
+                "Exception", 
+                f"An error occurred while executing the script:\n{str(e)}"
+            )
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
+
 
     def run_in_pat_sup_exp(self):
         """
