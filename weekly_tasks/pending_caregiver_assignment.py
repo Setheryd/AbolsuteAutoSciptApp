@@ -207,7 +207,7 @@ def send_email(pending_admissions):
         outlookMail = outlookApp.CreateItem(0)
         outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com; Liliia.Reshetnyk@absolutecaregivers.com"
         outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
-        outlookMail.Subject = "Pending Admissions Reminder"
+        outlookMail.Subject = "Pending Caregiver Assignment Reminder"
 
         # Construct the signature path dynamically
         username = os.getlogin()
@@ -221,17 +221,17 @@ def send_email(pending_admissions):
         email_body = (
             "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><p>Dear Team,</p>"
             "<p>I hope this message finds you well.</p>"
-            "<p>This is an automated reminder regarding pending admissions. The following patients currently do not have a discharge date and care giver assigned, and require your immediate attention:</p>"
+            "<p>This is an automated reminder regarding pending caregiver assignments. The following patients are labeled as active and do not have a caregiver assigned to them yet:</p>"
             "<ul>"
         )
 
         # Add each patient name as a list item
         for patient in pending_admissions:
-            email_body += f"<li>{patient}</li>"
+            email_body += f"<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><li>{patient}</li>"
         email_body += "</ul>"
 
         email_body += (
-            "<p>Please review and update the patient records file accordingly. If you notice any discrepancies or have already addressed these admissions, kindly update the records to maintain accuracy.</p>"
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'><p>Please review and update the patient records file accordingly. If you notice any discrepancies or have already addressed these admissions, kindly update the records to maintain accuracy.</p>"
             "<p>Thank you for your prompt attention to this matter.</p>"
             "<p>Best regards,</p></div>"
         )

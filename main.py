@@ -1,11 +1,11 @@
 # main_app.py
 
-import win32com.client as win32# type: ignore
+import win32com.client as win32  # type:ignore
 import os
 import sys
 import subprocess
 from datetime import datetime, timedelta
-from PySide6.QtWidgets import (# type: ignore
+from PySide6.QtWidgets import (  # type: ignore
     QApplication,
     QWidget,
     QPushButton,
@@ -18,8 +18,8 @@ from PySide6.QtWidgets import (# type: ignore
     QTextEdit,
     QSpacerItem
 )
-from PySide6.QtCore import Qt, QProcess, Slot # type: ignore
-from PySide6.QtGui import QMovie # type: ignore
+from PySide6.QtCore import Qt, QProcess, Slot  # type: ignore
+from PySide6.QtGui import QMovie  # type: ignore
 
 # Categorized items (already sorted alphabetically)
 daily_items = sorted([
@@ -307,8 +307,6 @@ class MainApp(QWidget):
         # Also reset the selected subcategory button
         self.selected_subcategory_button = None
     
-    # Inside the show_buttons method in MainApp class
-
     def show_buttons(self, items):
         """
         Create and display sub-category buttons based on the selected category.
@@ -348,9 +346,9 @@ class MainApp(QWidget):
             elif item == "Pending PERS Installation":
                 button.setObjectName("pending_PERS_installation")  # Assign a unique object name
                 button.clicked.connect(self.run_pending_PERS_installation)
-            elif item == "SB ID EXP":  # Add this condition
-                button.setObjectName("sb_id_exp")
-                button.clicked.connect(self.run_sb_id_exp)
+            elif item == "IN PAT SUP EXP":  # Added condition for "IN PAT SUP EXP"
+                button.setObjectName("in_pat_sup_exp")  # Assign a unique object name
+                button.clicked.connect(self.run_in_pat_sup_exp)
             else:
                 button.clicked.connect(self.show_message)
             
@@ -382,9 +380,7 @@ class MainApp(QWidget):
             
             # Add the button to the layout with horizontal center alignment
             self.button_layout.addWidget(button, alignment=Qt.AlignHCenter)
-
-
-
+    
     def select_subcategory(self, button):
         """
         Handles the selection of a sub-category button.
@@ -419,7 +415,7 @@ class MainApp(QWidget):
         Execute the in_emp_id_exp.py script when the "Caregiver ID Exp" button is clicked.
         """
         try:
-            # Determine the path to the in_care_id_exp.py script
+            # Determine the path to the in_emp_id_exp.py script
             script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_emp_id_exp.py")
             
             if not os.path.exists(script_path):
@@ -460,8 +456,6 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
-
-            # Inside the MainApp class in main_app.py
 
     def run_sb_id_exp(self):
         """
@@ -517,7 +511,6 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
-
     
     def run_indy_emp_eval(self):
         """
@@ -621,7 +614,61 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
+
+    def run_in_pat_sup_exp(self):
+        """
+        Execute the in_pat_sup_exp.py script when the "IN PAT SUP EXP" button is clicked.
+        """
+        try:
+            # Determine the path to the in_pat_sup_exp.py script
+            script_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "weekly_tasks",
+                "in_pat_sup_exp.py"
+            )
             
+            if not os.path.exists(script_path):
+                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
+                return
+            
+            # Disable the sub-category buttons to prevent multiple executions
+            self.set_buttons_enabled(False)
+            
+            # Show the animation and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            
+            # Clear previous logs
+            self.log_text.clear()
+            
+            # Initialize QProcess
+            self.process = QProcess(self)
+            self.process.setProgram(sys.executable)
+            # Use the '-u' flag to force unbuffered output
+            self.process.setArguments(['-u', script_path])
+            
+            # Connect signals
+            self.process.readyReadStandardOutput.connect(self.handle_stdout)
+            self.process.readyReadStandardError.connect(self.handle_stderr)
+            self.process.finished.connect(self.process_finished)
+            
+            # Start the process
+            self.process.start()
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self, 
+                "Exception", 
+                f"An error occurred while executing the script:\n{str(e)}"
+            )
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
 
     def run_pending_admission(self):
         """
@@ -725,7 +772,7 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
-    
+
     def run_pending_IHCC_admission(self):
         """
         Execute the pending_IHCC_admission.py script when the "Pending IHCC Admission" button is clicked.
@@ -846,7 +893,7 @@ class MainApp(QWidget):
             # Replace newline characters with HTML line breaks for proper formatting
             formatted_data = data.replace('\n', '<br>')
             self.log_text.append(f"<span style='color: white;'>{formatted_data}</span>")
-    
+
     @Slot()
     def handle_stderr(self):
         """
@@ -857,7 +904,7 @@ class MainApp(QWidget):
             # Replace newline characters with HTML line breaks for proper formatting
             formatted_data = data.replace('\n', '<br>')
             self.log_text.append(f"<span style='color: red;'>{formatted_data}</span>")
-    
+
     @Slot(int, QProcess.ExitStatus)
     def process_finished(self, exitCode, exitStatus):
         """
@@ -882,7 +929,7 @@ class MainApp(QWidget):
         else:
             # Log failure in the log area
             self.log_text.append(f"<span style='color: red;'>Script failed with exit code {exitCode}.</span>")
-    
+
     def cancel_process(self):
         """
         Cancel the running process.
@@ -898,7 +945,7 @@ class MainApp(QWidget):
             self.set_buttons_enabled(True)
             # Log cancellation
             self.log_text.append("<span style='color: orange;'>Script execution has been cancelled.</span>")
-    
+
     def set_buttons_enabled(self, enabled):
         """
         Enable or disable all sub-category buttons.
@@ -910,7 +957,7 @@ class MainApp(QWidget):
             widget = self.button_layout.itemAt(i).widget()
             if isinstance(widget, QPushButton):
                 widget.setEnabled(enabled)
-    
+
     def update_category_styles(self):
         """
         Update each category button based on its expanded state.
