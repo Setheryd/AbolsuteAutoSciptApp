@@ -29,7 +29,6 @@ daily_items.insert(0, "Run All")  # Ensure "Run All" is at the top
 
 weekly_items = sorted([
     "Caregiver ID Exp",
-    "Clinician Info Source Pull",
     "IN Emp EVAL EXP",
     "IN Emp In-Services EXP",
     "IN PAT SUP EXP",
@@ -61,17 +60,18 @@ class MainApp(QWidget):
         
         # Set up the window properties
         self.setWindowTitle("Absolute Caregivers Auto Scripting App")
-        self.setGeometry(100, 100, 1200, 800)  # Increased width for better layout
+        self.setGeometry(100, 100, 1200, 1200)  # Increased width for better layout
+        
         
         # Main layout
         self.main_layout = QHBoxLayout()
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setSpacing(20)
         
         # Left-side layout for category buttons (top-aligned)
         self.category_layout = QVBoxLayout()
-        self.category_layout.setContentsMargins(0, 0, 0, 0)
-        self.category_layout.setSpacing(10)
+        self.category_layout.setContentsMargins(20, 20, 20, 20)
+        self.category_layout.setSpacing(20)
         self.category_layout.setAlignment(Qt.AlignTop)  # Ensure top alignment
 
         # Add "Categories" header with additional styling
@@ -218,6 +218,23 @@ class MainApp(QWidget):
         
         # Adjust size to fit the content
         self.adjustSize()
+
+        self.scripts = {
+            "Caregiver ID Exp": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_emp_id_exp.py"),
+            "IN Emp EVAL EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "indy_emp_eval.py"),
+            "IN Emp In-Services EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_emp_inservices_exp.py"),
+            "IN PAT SUP EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_pat_sup_exp.py"),
+            "Pending Admission": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_admission.py"),
+            "Pending Caregiver Assignment": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_caregiver_assignment.py"),
+            "Pending IHCC Admission": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_IHCC_admission.py"),
+            "Pending PERS Installation": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_PERS_Installation.py"),
+            "SB EMP EVAL EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_emp_eval.py"),
+            "SB Emp Inservices Exp": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_emp_inservices_exp.py"),
+            "SB ID EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_emp_id_exp.py"),
+            "SB PAT SUP EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_pat_sup_exp.py"),
+            # Add other scripts as needed
+        }
+
         
     def create_category_button(self, text, items, identifier):
         """
@@ -264,36 +281,29 @@ class MainApp(QWidget):
         return button
     
     def toggle_category(self, category, items):
-        """
-        Toggle the visibility of sub-category buttons based on the selected category.
-        
-        Args:
-            category (str): The name of the category being toggled.
-            items (list): The list of sub-category items to display if expanded.
-        """
         if self.expanded_categories[category]:
             # If expanded, collapse and clear sub-category buttons
             self.clear_buttons()
             self.expanded_categories[category] = False
             self.set_category_button_checked(category, False)
+            self.current_category = None  # Reset current category
         else:
             # If collapsed, expand and show sub-category buttons
             self.clear_buttons()
+            self.current_category = category  # Store current category
             self.show_buttons(items)
             # Update the state to show it's expanded
             self.expanded_categories[category] = True
-            
             # Collapse other categories
             for cat in self.expanded_categories:
                 if cat != category:
                     self.expanded_categories[cat] = False
                     self.set_category_button_checked(cat, False)
-        
         # Update button styles to reflect current selection
         self.update_category_styles()
-        
         # Adjust window size based on content
         self.adjustSize()
+
     
     def clear_buttons(self):
         """
@@ -321,8 +331,16 @@ class MainApp(QWidget):
             # Make the button checkable
             button.setCheckable(True)
             
+            # Handle the "Run All" button
+            if item == "Run All":
+                button.setObjectName("run_all")
+                if self.current_category == "Weekly":
+                    button.clicked.connect(self.run_all_weekly_items)
+                else:
+                    button.clicked.connect(self.show_message)
+            
             # Connect specific actions based on the button text or object name
-            if item == "Caregiver ID Exp":
+            elif item == "Caregiver ID Exp":
                 button.setObjectName("caregiver_id_exp")  # Assign a unique object name
                 button.clicked.connect(self.run_caregiver_id_exp)
             elif item == "IN Emp EVAL EXP":
@@ -390,6 +408,7 @@ class MainApp(QWidget):
             # Add the button to the layout with horizontal center alignment
             self.button_layout.addWidget(button, alignment=Qt.AlignHCenter)
 
+
     
     def select_subcategory(self, button):
         """
@@ -419,6 +438,68 @@ class MainApp(QWidget):
             msg_box.setWindowTitle("Button Clicked")
             msg_box.setText(f"You clicked: {button.text()}")
             msg_box.exec()
+
+    def run_all_weekly_items(self):
+        try:
+            # Get the list of script paths for weekly scripts
+            script_items = weekly_items[1:]  # Skip "Run All"
+            self.pending_scripts = [self.scripts[item] for item in script_items if item in self.scripts]
+
+            # Disable the sub-category buttons
+            self.set_buttons_enabled(False)
+            # Show the animation and logs
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            self.log_text.clear()
+            # Start the first script
+            self.run_next_script()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Exception", f"An error occurred:\n{str(e)}")
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
+
+    def run_next_script(self):
+        if self.pending_scripts:
+            next_script_path = self.pending_scripts.pop(0)
+            self.run_script(next_script_path)
+        else:
+            # All scripts have been executed
+            self.animation_movie.stop()
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.set_buttons_enabled(True)
+            self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
+
+    def run_script(self, script_path):
+        try:
+            if not os.path.exists(script_path):
+                QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
+                self.run_next_script()
+                return
+
+            self.process = QProcess(self)
+            self.process.setProgram(sys.executable)
+            self.process.setArguments(['-u', script_path])
+
+            # Connect signals
+            self.process.readyReadStandardOutput.connect(self.handle_stdout)
+            self.process.readyReadStandardError.connect(self.handle_stderr)
+            self.process.finished.connect(self.process_finished)
+
+            self.process.start()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Exception", f"An error occurred:\n{str(e)}")
+            self.run_next_script()
+
+        
     
     def run_caregiver_id_exp(self):
         """
@@ -1083,44 +1164,33 @@ class MainApp(QWidget):
 
     @Slot(int, QProcess.ExitStatus)
     def process_finished(self, exitCode, exitStatus):
-        """
-        Handle the completion of the process.
-        
-        Args:
-            exitCode (int): The exit code of the process.
-            exitStatus (QProcess.ExitStatus): The exit status of the process.
-        """
-        # Hide the animation and cancel button
-        self.animation_movie.stop()
-        self.animation_label.hide()
-        self.cancel_button.hide()
-        
-        # Re-enable the sub-category buttons
-        self.set_buttons_enabled(True)
-        
-        # Check if process exited successfully
         if exitCode == 0:
-            # Log success in the log area
             self.log_text.append("<span style='color: green;'>Script executed successfully.</span>")
         else:
-            # Log failure in the log area
             self.log_text.append(f"<span style='color: red;'>Script failed with exit code {exitCode}.</span>")
 
-    def cancel_process(self):
-        """
-        Cancel the running process.
-        """
-        if self.process and self.process.state() == QProcess.Running:
-            self.process.kill()
-            self.process = None
-            # Hide the animation and cancel button
+        if hasattr(self, 'pending_scripts') and self.pending_scripts:
+            self.run_next_script()
+        else:
             self.animation_movie.stop()
             self.animation_label.hide()
             self.cancel_button.hide()
-            # Re-enable the sub-category buttons
             self.set_buttons_enabled(True)
-            # Log cancellation
+            self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
+
+
+    def cancel_process(self):
+        if self.process and self.process.state() == QProcess.Running:
+            self.process.kill()
+            self.process = None
+            if hasattr(self, 'pending_scripts'):
+                self.pending_scripts = []
+            self.animation_movie.stop()
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.set_buttons_enabled(True)
             self.log_text.append("<span style='color: orange;'>Script execution has been cancelled.</span>")
+
 
     def set_buttons_enabled(self, enabled):
         """
