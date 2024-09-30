@@ -1,5 +1,3 @@
-# main_app.py
-
 import win32com.client as win32  # type:ignore
 import os
 import sys
@@ -16,10 +14,11 @@ from PySide6.QtWidgets import (  # type: ignore
     QScrollArea,
     QLabel,
     QTextEdit,
-    QSpacerItem
+    QSpacerItem,
+    QFrame,
 )
-from PySide6.QtCore import Qt, QProcess, Slot  # type: ignore
-from PySide6.QtGui import QMovie  # type: ignore
+from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
+from PySide6.QtGui import QMovie, QIcon, QPixmap  # type: ignore
 
 # Categorized items (already sorted alphabetically)
 daily_items = sorted([
@@ -54,20 +53,86 @@ monthly_items = sorted([
 monthly_items.insert(0, "Run All")  # Ensure "Run All" is at the top
 
 
+class ScriptButtonWidget(QWidget):
+    def __init__(self, script_name, button, has_status=True):
+        super().__init__()
+        self.script_name = script_name
+        self.button = button
+        self.has_status = has_status
+
+        # Status label
+        self.status_label = QLabel()
+        if self.has_status:
+            self.status_label.setFixedSize(24, 24)  # Increased size for better visibility
+            self.status_label.setAlignment(Qt.AlignCenter)
+        else:
+            self.status_label.hide()
+
+        if self.has_status:
+            # Initial status: Pending
+            self.status = 'pending'
+            self.update_status_icon()
+
+        # Layout
+        layout = QHBoxLayout()
+        layout.addWidget(self.button)
+        if self.has_status:
+            layout.addWidget(self.status_label)
+        layout.setAlignment(Qt.AlignLeft)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        self.setLayout(layout)
+
+    def update_status_icon(self):
+        if not self.has_status:
+            return
+
+        # Construct absolute path to the icon
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        if self.status == 'pending':
+            icon_path = os.path.join(script_dir, 'resources', 'pending.png')
+        elif self.status == 'running':
+            icon_path = os.path.join(script_dir, 'resources', 'running.png')
+        elif self.status == 'success':
+            icon_path = os.path.join(script_dir, 'resources', 'success.png')
+        elif self.status == 'failed':
+            icon_path = os.path.join(script_dir, 'resources', 'failed.png')
+        else:
+            icon_path = ''
+
+        if os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+            if pixmap.isNull():
+                print(f"Failed to load pixmap from {icon_path}")
+                self.status_label.setText(self.status.capitalize())
+            else:
+                self.status_label.setPixmap(pixmap.scaled(
+                    self.status_label.size(),
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                ))
+        else:
+            print(f"Icon path does not exist: {icon_path}")
+            self.status_label.setText(self.status.capitalize())
+
+    def set_status(self, status):
+        self.status = status
+        self.update_status_icon()
+
+
 class MainApp(QWidget):
     def __init__(self):
         super().__init__()
-        
+
         # Set up the window properties
         self.setWindowTitle("Absolute Caregivers Auto Scripting App")
-        self.setGeometry(100, 100, 1200, 1200)  # Increased width for better layout
-        
-        
+        self.setGeometry(100, 100, 1200, 800)  # Adjusted height for better layout
+
         # Main layout
         self.main_layout = QHBoxLayout()
         self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setSpacing(20)
-        
+
         # Left-side layout for category buttons (top-aligned)
         self.category_layout = QVBoxLayout()
         self.category_layout.setContentsMargins(20, 20, 20, 20)
@@ -98,15 +163,15 @@ class MainApp(QWidget):
         # Create a widget to hold the category buttons and add it to the left side
         self.category_container = QWidget()
         self.category_container.setLayout(self.category_layout)
-        self.category_container.setFixedWidth(200)  # Set fixed width for the category container
+        self.category_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.main_layout.addWidget(self.category_container)
-        
+
         # Middle layout (right_layout)
         self.right_layout = QVBoxLayout()
         self.right_layout.setContentsMargins(0, 0, 0, 0)
         self.right_layout.setSpacing(10)
         self.right_layout.setAlignment(Qt.AlignTop)
-        
+
         # Add "Scripts" header with additional styling
         scripts_header = QLabel("Scripts")
         scripts_header.setStyleSheet("""
@@ -131,27 +196,27 @@ class MainApp(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.button_container)
-        self.scroll_area.setFixedWidth(350)
-        self.scroll_area.setFixedHeight(600)
+        self.scroll_area.setMinimumWidth(350)  # Increased width to accommodate status icons
 
         # Add the scroll area to the right layout
         self.right_layout.addWidget(self.scroll_area)
-        
-        # Create a widget to hold the right_layout and set fixed width
+
+        # Create a widget to hold the right_layout
         self.right_container = QWidget()
         self.right_container.setLayout(self.right_layout)
-        self.right_container.setFixedWidth(400)  # Adjust as needed
+        self.right_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.main_layout.addWidget(self.right_container)
 
         # Indicator layout (Rightmost column)
         self.indicator_layout = QVBoxLayout()
         self.indicator_layout.setAlignment(Qt.AlignTop)
         self.indicator_layout.setSpacing(10)
-        
+
         # Animation Label
         self.animation_label = QLabel(self)
         self.animation_label.setFixedSize(100, 100)  # Increased size for better visibility
-        loading_gif_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources", "loading.gif")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        loading_gif_path = os.path.join(script_dir, "resources", "loading.gif")
         if not os.path.exists(loading_gif_path):
             print(f"Loading GIF not found at {loading_gif_path}. Please ensure the file exists.")
         self.animation_movie = QMovie(loading_gif_path)
@@ -159,18 +224,19 @@ class MainApp(QWidget):
         self.animation_label.setAlignment(Qt.AlignCenter)  # Center the GIF within the label
         self.animation_label.setScaledContents(True)  # Scale the GIF to fit the label
         self.animation_label.hide()  # Hide initially
-        
+
         # Cancel Button
         self.cancel_button = QPushButton("Cancel", self)
         self.cancel_button.setFixedWidth(250)
         self.cancel_button.clicked.connect(self.cancel_process)
         self.cancel_button.hide()  # Hide initially
-        
+
         # Log Area
         self.log_label = QLabel("Script Output:")
         self.log_label.hide()  # Hide initially
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
+        self.log_text.setFixedWidth(400)
         self.log_text.setFixedHeight(400)
         self.log_text.hide()  # Hide initially
         self.log_text.setStyleSheet("""
@@ -181,79 +247,90 @@ class MainApp(QWidget):
                 font-size: 12pt;
             }
         """)
-        
+
         # Add to indicator layout
         self.indicator_layout.addWidget(self.animation_label, alignment=Qt.AlignCenter)
         self.indicator_layout.addWidget(self.cancel_button, alignment=Qt.AlignCenter)
         self.indicator_layout.addWidget(self.log_label, alignment=Qt.AlignLeft)
         self.indicator_layout.addWidget(self.log_text, alignment=Qt.AlignCenter)
-        
+
         # Add a spacer to push indicators to the top
         self.indicator_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
-        
-        # Create a widget to hold the indicator_layout and set fixed width
+
+        # Create a widget to hold the indicator_layout
         self.indicator_container = QWidget()
         self.indicator_container.setLayout(self.indicator_layout)
-        self.indicator_container.setFixedWidth(350)  # Adjust as needed
+        self.indicator_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.main_layout.addWidget(self.indicator_container)
-        
+
         # Set the main layout for the widget
         self.setLayout(self.main_layout)
-        
+
         # State to track expanded categories
         self.expanded_categories = {
             "Daily": False,
             "Weekly": False,
             "Monthly": False
         }
-        
+
         # Initialize QProcess
         self.process = None
-        
+
         # Initialize selected subcategory button
         self.selected_subcategory_button = None
-        
+
         # Update styles initially
         self.update_category_styles()
-        
+
         # Adjust size to fit the content
         self.adjustSize()
 
+        # Dictionary to map script names to their paths
         self.scripts = {
-            "Caregiver ID Exp": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_emp_id_exp.py"),
-            "IN Emp EVAL EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "indy_emp_eval.py"),
-            "IN Emp In-Services EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_emp_inservices_exp.py"),
-            "IN PAT SUP EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_pat_sup_exp.py"),
-            "Pending Admission": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_admission.py"),
-            "Pending Caregiver Assignment": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_caregiver_assignment.py"),
-            "Pending IHCC Admission": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_IHCC_admission.py"),
-            "Pending PERS Installation": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_PERS_Installation.py"),
-            "SB EMP EVAL EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_emp_eval.py"),
-            "SB Emp Inservices Exp": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_emp_inservices_exp.py"),
-            "SB ID EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_emp_id_exp.py"),
-            "SB PAT SUP EXP": os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "sb_pat_sup_exp.py"),
+            "Caregiver ID Exp": os.path.join(script_dir, "weekly_tasks", "in_emp_id_exp.py"),
+            "IN Emp EVAL EXP": os.path.join(script_dir, "weekly_tasks", "indy_emp_eval.py"),
+            "IN Emp In-Services EXP": os.path.join(script_dir, "weekly_tasks", "in_emp_inservices_exp.py"),
+            "IN PAT SUP EXP": os.path.join(script_dir, "weekly_tasks", "in_pat_sup_exp.py"),
+            "Pending Admission": os.path.join(script_dir, "weekly_tasks", "pending_admission.py"),
+            "Pending Caregiver Assignment": os.path.join(script_dir, "weekly_tasks", "pending_caregiver_assignment.py"),
+            "Pending IHCC Admission": os.path.join(script_dir, "weekly_tasks", "pending_IHCC_admission.py"),
+            "Pending PERS Installation": os.path.join(script_dir, "weekly_tasks", "pending_PERS_Installation.py"),
+            "SB EMP EVAL EXP": os.path.join(script_dir, "weekly_tasks", "sb_emp_eval.py"),
+            "SB Emp Inservices Exp": os.path.join(script_dir, "weekly_tasks", "sb_emp_inservices_exp.py"),
+            "SB ID EXP": os.path.join(script_dir, "weekly_tasks", "sb_emp_id_exp.py"),
+            "SB PAT SUP EXP": os.path.join(script_dir, "weekly_tasks", "sb_pat_sup_exp.py"),
             # Add other scripts as needed
         }
 
-        
+        # Dictionary to store script buttons
+        self.script_buttons = {}
+
+        # Dictionary to store script execution results
+        self.script_results = {}
+
+        # Timer for timeout
+        self.timer = QTimer(self)
+        self.timer.setInterval(45000)  # 45 seconds
+        self.timer.timeout.connect(self.handle_timeout)
+
     def create_category_button(self, text, items, identifier):
         """
         Create a category button that acts as a toggle.
-        
+
         Args:
             text (str): The display text of the button.
             items (list): The list of sub-category items associated with this category.
             identifier (str): A unique identifier for the button (used as objectName).
-        
+
         Returns:
             QPushButton: The configured category button.
         """
         button = QPushButton(text, self)
-        button.setFixedWidth(150)  # Set a fixed width for all category buttons
+        button.setFixedWidth(300)  # Set a fixed width for all category buttons
         button.setCheckable(True)  # Make the button checkable
         button.clicked.connect(lambda: self.toggle_category(text, items))
         button.setObjectName(identifier)  # Assign a unique object name
-        
+
         # Enhance button appearance with border-radius and black text
         button.setStyleSheet("""
             QPushButton {
@@ -274,12 +351,12 @@ class MainApp(QWidget):
                 color: black;
             }
         """)
-        
+
         # Set size policy to prevent vertical stretching
         button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        
+
         return button
-    
+
     def toggle_category(self, category, items):
         if self.expanded_categories[category]:
             # If expanded, collapse and clear sub-category buttons
@@ -304,33 +381,35 @@ class MainApp(QWidget):
         # Adjust window size based on content
         self.adjustSize()
 
-    
     def clear_buttons(self):
         """
         Clear all sub-category buttons from the layout.
         """
-        for i in reversed(range(self.button_layout.count())): 
+        for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
-        
+
         # Also reset the selected subcategory button
         self.selected_subcategory_button = None
-    
+
+        # Clear script_buttons mapping
+        self.script_buttons.clear()
+
     def show_buttons(self, items):
         """
         Create and display sub-category buttons based on the selected category.
-        
+
         Args:
             items (list): The list of sub-category items to create buttons for.
         """
         for item in items:
             button = QPushButton(item, self)
             button.setFixedWidth(300)  # Set a fixed width for all sub-category buttons
-            
+
             # Make the button checkable
             button.setCheckable(True)
-            
+
             # Handle the "Run All" button
             if item == "Run All":
                 button.setObjectName("run_all")
@@ -338,47 +417,20 @@ class MainApp(QWidget):
                     button.clicked.connect(self.run_all_weekly_items)
                 else:
                     button.clicked.connect(self.show_message)
-            
-            # Connect specific actions based on the button text or object name
-            elif item == "Caregiver ID Exp":
-                button.setObjectName("caregiver_id_exp")  # Assign a unique object name
-                button.clicked.connect(self.run_caregiver_id_exp)
-            elif item == "IN Emp EVAL EXP":
-                button.setObjectName("in_emp_eval_exp")  # Assign a unique object name
-                button.clicked.connect(self.run_indy_emp_eval)
-            elif item == "SB EMP EVAL EXP":  # Existing condition
-                button.setObjectName("sb_emp_eval_exp")  # Assign a unique object name
-                button.clicked.connect(self.run_sb_emp_eval)
-            elif item == "SB ID EXP":
-                button.setObjectName("sb_id_exp")
-                button.clicked.connect(self.run_sb_id_exp)
-            elif item == "Pending Admission":
-                button.setObjectName("pending_admission")
-                button.clicked.connect(self.run_pending_admission)
-            elif item == "Pending Caregiver Assignment":
-                button.setObjectName("pending_caregiver_assignment")
-                button.clicked.connect(self.run_pending_caregiver_assignment)
-            elif item == "Pending IHCC Admission":
-                button.setObjectName("pending_IHCC_admission")
-                button.clicked.connect(self.run_pending_IHCC_admission)
-            elif item == "Pending PERS Installation":
-                button.setObjectName("pending_PERS_installation")  # Assign a unique object name
-                button.clicked.connect(self.run_pending_PERS_installation)
-            elif item == "IN PAT SUP EXP":
-                button.setObjectName("in_pat_sup_exp")  # Assign a unique object name
-                button.clicked.connect(self.run_in_pat_sup_exp)
-            elif item == "SB PAT SUP EXP":  # Added condition for "SB PAT SUP EXP"
-                button.setObjectName("sb_pat_sup_exp")  # Assign a unique object name
-                button.clicked.connect(self.run_sb_pat_sup_exp)  # Connect to the new method
-            elif item == "SB Emp Inservices Exp":  
-                button.setObjectName("sb_emp_inservices_exp")  
-                button.clicked.connect(self.run_sb_emp_inservices_exp)  
-            elif item == "IN Emp In-Services EXP":  
-                button.setObjectName("in_emp_inservices_exp")  
-                button.clicked.connect(self.run_in_emp_inservices_exp)  
+                # Wrap in ScriptButtonWidget without status indicator
+                script_widget = ScriptButtonWidget(item, button, has_status=False)
             else:
-                button.clicked.connect(self.show_message)
-            
+                # Map the script name to the button
+                if item in self.scripts:
+                    script_path = self.scripts[item]
+                    button.clicked.connect(lambda checked, path=script_path, name=item: self.run_single_script(path, name))
+                else:
+                    button.clicked.connect(self.show_message)
+
+                # Wrap in ScriptButtonWidget with status indicator
+                script_widget = ScriptButtonWidget(item, button, has_status=True)
+                self.script_buttons[item] = script_widget  # Store the composite widget
+
             # Update stylesheet to handle the checked state
             button.setStyleSheet("""
                 QPushButton {
@@ -398,36 +450,34 @@ class MainApp(QWidget):
                     color: black;
                 }
             """)
-            
+
             # Set size policy to prevent vertical stretching
             button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            
+
             # Connect the selection handler
             button.clicked.connect(lambda checked, btn=button: self.select_subcategory(btn))
-            
-            # Add the button to the layout with horizontal center alignment
-            self.button_layout.addWidget(button, alignment=Qt.AlignHCenter)
 
+            # Add the widget to the layout with horizontal center alignment
+            self.button_layout.addWidget(script_widget, alignment=Qt.AlignHCenter)
 
-    
     def select_subcategory(self, button):
         """
         Handles the selection of a sub-category button.
         Ensures that only one sub-category button is checked at a time.
-        
+
         Args:
             button (QPushButton): The button that was clicked.
         """
         # If another subcategory button is already selected, uncheck it
         if self.selected_subcategory_button and self.selected_subcategory_button != button:
             self.selected_subcategory_button.setChecked(False)
-        
+
         # Update the selected subcategory button
         if button.isChecked():
             self.selected_subcategory_button = button
         else:
             self.selected_subcategory_button = None
-    
+
     def show_message(self):
         """
         Display a message box with the button text.
@@ -443,7 +493,14 @@ class MainApp(QWidget):
         try:
             # Get the list of script paths for weekly scripts
             script_items = weekly_items[1:]  # Skip "Run All"
-            self.pending_scripts = [self.scripts[item] for item in script_items if item in self.scripts]
+            self.pending_scripts = [(item, self.scripts[item]) for item in script_items if item in self.scripts]
+
+            # Initialize script results
+            self.script_results = {item: 'pending' for item, _ in self.pending_scripts}
+
+            # Reset status icons
+            for item in self.script_buttons:
+                self.script_buttons[item].set_status('pending')
 
             # Disable the sub-category buttons
             self.set_buttons_enabled(False)
@@ -467,22 +524,28 @@ class MainApp(QWidget):
 
     def run_next_script(self):
         if self.pending_scripts:
-            next_script_path = self.pending_scripts.pop(0)
-            self.run_script(next_script_path)
+            next_script_name, next_script_path = self.pending_scripts.pop(0)
+            self.current_script_name = next_script_name
+            self.run_script(next_script_path, next_script_name)
         else:
             # All scripts have been executed
-            self.animation_movie.stop()
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.set_buttons_enabled(True)
             self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
+            # Show summary
+            self.show_summary()
 
-    def run_script(self, script_path):
+    def run_script(self, script_path, script_name):
         try:
             if not os.path.exists(script_path):
                 QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
                 self.run_next_script()
                 return
+
+            # Update status to 'running'
+            self.script_results[script_name] = 'running'
+            self.script_buttons[script_name].set_status('running')
+
+            # Highlight the active button
+            self.highlight_active_button(script_name)
 
             self.process = QProcess(self)
             self.process.setProgram(sys.executable)
@@ -492,6 +555,14 @@ class MainApp(QWidget):
             self.process.readyReadStandardOutput.connect(self.handle_stdout)
             self.process.readyReadStandardError.connect(self.handle_stderr)
             self.process.finished.connect(self.process_finished)
+
+            # Start the timer for timeout
+            self.timer.start()
+
+            # Show loading GIF and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
 
             self.process.start()
 
@@ -499,641 +570,53 @@ class MainApp(QWidget):
             QMessageBox.critical(self, "Exception", f"An error occurred:\n{str(e)}")
             self.run_next_script()
 
-        
-    
-    def run_caregiver_id_exp(self):
-        """
-        Execute the in_emp_id_exp.py script when the "Caregiver ID Exp" button is clicked.
-        """
+    def run_single_script(self, script_path, script_name):
         try:
-            # Determine the path to the in_emp_id_exp.py script
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "in_emp_id_exp.py")
-            
             if not os.path.exists(script_path):
                 QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
                 return
-            
-            # Disable the sub-category buttons to prevent multiple executions
+
+            # Reset status icons
+            self.script_buttons[script_name].set_status('pending')
+            self.script_results = {script_name: 'pending'}
+
+            # Disable the sub-category buttons
             self.set_buttons_enabled(False)
-            
+
             # Show the animation and cancel button
             self.animation_label.show()
             self.animation_movie.start()
             self.cancel_button.show()
             self.log_text.show()
             self.log_label.show()
-            
+
             # Clear previous logs
             self.log_text.clear()
-            
+
+            # Update status to 'running'
+            self.script_buttons[script_name].set_status('running')
+            self.highlight_active_button(script_name)
+            self.current_script_name = script_name
+
             # Initialize QProcess
             self.process = QProcess(self)
             self.process.setProgram(sys.executable)
             # Use the '-u' flag to force unbuffered output
             self.process.setArguments(['-u', script_path])
-            
+
             # Connect signals
             self.process.readyReadStandardOutput.connect(self.handle_stdout)
             self.process.readyReadStandardError.connect(self.handle_stderr)
             self.process.finished.connect(self.process_finished)
-            
+
+            # Start the timer for timeout
+            self.timer.start()
+
             # Start the process
             self.process.start()
-            
+
         except Exception as e:
             QMessageBox.critical(self, "Exception", f"An error occurred while executing the script:\n{str(e)}")
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_sb_id_exp(self):
-        """
-        Execute the sb_emp_id_exp.py script when the "SB ID EXP" button is clicked.
-        """
-        try:
-            # Determine the path to the sb_emp_id_exp.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
-                "weekly_tasks", 
-                "sb_emp_id_exp.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-    
-    def run_indy_emp_eval(self):
-        """
-        Execute the indy_emp_eval.py script when the "IN Emp EVAL EXP" button is clicked.
-        """
-        try:
-            # Determine the path to the indy_emp_eval.py script
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "indy_emp_eval.py")
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Exception", f"An error occurred while executing the script:\n{str(e)}")
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-
-    def run_sb_emp_eval(self):
-        """
-        Execute the sb_emp_eval.py script when the "SB EMP EVAL EXP" button is clicked.
-        """
-        try:
-            # Determine the path to the sb_emp_eval.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
-                "weekly_tasks", 
-                "sb_emp_eval.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_sb_emp_inservices_exp(self):
-        """
-        Execute the sb_emp_eval.py script when the "SB EMP EVAL EXP" button is clicked.
-        """
-        try:
-            # Determine the path to the sb_emp_eval.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
-                "weekly_tasks", 
-                "sb_emp_inservices_exp.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_in_emp_inservices_exp(self):
-        """
-        Execute the in_emp_inservices_exp.py script when the "IN Emp In-Services EXP" button is clicked.
-        """
-        try:
-            # Determine the path to the sb_emp_eval.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
-                "weekly_tasks", 
-                "in_emp_inservices_exp.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-
-    def run_in_pat_sup_exp(self):
-        """
-        Execute the in_pat_sup_exp.py script when the "IN PAT SUP EXP" button is clicked.
-        """
-        try:
-            # Determine the path to the in_pat_sup_exp.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "weekly_tasks",
-                "in_pat_sup_exp.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_sb_pat_sup_exp(self):
-        """
-        Execute the sb_pat_sup_exp.py script when the "IN PAT SUP EXP" button is clicked.
-        """
-        try:
-            # Determine the path to the in_pat_sup_exp.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "weekly_tasks",
-                "sb_pat_sup_exp.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_pending_admission(self):
-        """
-        Execute the pending_admission.py script when the "Pending Admission" button is clicked.
-        """
-        try:
-            # Determine the path to the pending_admission.py script
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_tasks", "pending_admission.py")
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Exception", f"An error occurred while executing the script:\n{str(e)}")
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_pending_caregiver_assignment(self):
-        """
-        Execute the pending_caregiver_assignment.py script when the 
-        "Pending Caregiver Assignment" button is clicked.
-        """
-        try:
-            # Determine the path to the pending_caregiver_assignment.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
-                "weekly_tasks", 
-                "pending_caregiver_assignment.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_pending_IHCC_admission(self):
-        """
-        Execute the pending_IHCC_admission.py script when the "Pending IHCC Admission" button is clicked.
-        """
-        try:
-            # Determine the path to the pending_IHCC_admission.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
-                "weekly_tasks", 
-                "pending_IHCC_admission.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
-            self.set_buttons_enabled(True)
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.log_text.hide()
-            self.log_label.hide()
-
-    def run_pending_PERS_installation(self):
-        """
-        Execute the pending_PERS_Installation.py script when the "Pending PERS Installation" button is clicked.
-        """
-        try:
-            # Determine the path to the pending_PERS_Installation.py script
-            script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
-                "weekly_tasks", 
-                "pending_PERS_Installation.py"
-            )
-            
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at '{script_path}'")
-                return
-            
-            # Disable the sub-category buttons to prevent multiple executions
-            self.set_buttons_enabled(False)
-            
-            # Show the animation and cancel button
-            self.animation_label.show()
-            self.animation_movie.start()
-            self.cancel_button.show()
-            self.log_text.show()
-            self.log_label.show()
-            
-            # Clear previous logs
-            self.log_text.clear()
-            
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            # Use the '-u' flag to force unbuffered output
-            self.process.setArguments(['-u', script_path])
-            
-            # Connect signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-            
-            # Start the process
-            self.process.start()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                "Exception", 
-                f"An error occurred while executing the script:\n{str(e)}"
-            )
             self.set_buttons_enabled(True)
             self.animation_label.hide()
             self.cancel_button.hide()
@@ -1164,25 +647,44 @@ class MainApp(QWidget):
 
     @Slot(int, QProcess.ExitStatus)
     def process_finished(self, exitCode, exitStatus):
+        self.timer.stop()
         if exitCode == 0:
-            self.log_text.append("<span style='color: green;'>Script executed successfully.</span>")
+            self.log_text.append(f"<span style='color: green;'>Script '{self.current_script_name}' executed successfully.</span>")
+            # Update status to 'success'
+            self.script_results[self.current_script_name] = 'success'
+            self.script_buttons[self.current_script_name].set_status('success')
         else:
-            self.log_text.append(f"<span style='color: red;'>Script failed with exit code {exitCode}.</span>")
+            self.log_text.append(f"<span style='color: red;'>Script '{self.current_script_name}' failed with exit code {exitCode}.</span>")
+            # Update status to 'failed'
+            self.script_results[self.current_script_name] = 'failed'
+            self.script_buttons[self.current_script_name].set_status('failed')
+
+        # Hide loading GIF and cancel button after each script
+        self.animation_movie.stop()
+        self.animation_label.hide()
+        self.cancel_button.hide()
+        self.set_buttons_enabled(True)
 
         if hasattr(self, 'pending_scripts') and self.pending_scripts:
             self.run_next_script()
         else:
-            self.animation_movie.stop()
-            self.animation_label.hide()
-            self.cancel_button.hide()
-            self.set_buttons_enabled(True)
             self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
+            # Show summary if in "Run All" mode
+            if hasattr(self, 'pending_scripts'):
+                self.show_summary()
 
+    def show_summary(self):
+        summary = "Script Execution Summary:\n\n"
+        for script_name, result in self.script_results.items():
+            summary += f"{script_name}: {result.capitalize()}\n"
+
+        QMessageBox.information(self, "Summary", summary)
 
     def cancel_process(self):
         if self.process and self.process.state() == QProcess.Running:
             self.process.kill()
             self.process = None
+            self.timer.stop()
             if hasattr(self, 'pending_scripts'):
                 self.pending_scripts = []
             self.animation_movie.stop()
@@ -1190,18 +692,26 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.set_buttons_enabled(True)
             self.log_text.append("<span style='color: orange;'>Script execution has been cancelled.</span>")
-
+            # Update status to 'failed'
+            self.script_results[self.current_script_name] = 'failed'
+            self.script_buttons[self.current_script_name].set_status('failed')
+            # Show summary
+            if hasattr(self, 'pending_scripts'):
+                self.show_summary()
 
     def set_buttons_enabled(self, enabled):
         """
         Enable or disable all sub-category buttons.
-        
+
         Args:
             enabled (bool): True to enable, False to disable.
         """
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, QPushButton):
+            if isinstance(widget, ScriptButtonWidget):
+                widget.button.setEnabled(enabled)
+            elif isinstance(widget, QPushButton):
+                # For "Run All" buttons
                 widget.setEnabled(enabled)
 
     def update_category_styles(self):
@@ -1211,11 +721,11 @@ class MainApp(QWidget):
         self.daily_button.setChecked(self.expanded_categories["Daily"])
         self.weekly_button.setChecked(self.expanded_categories["Weekly"])
         self.monthly_button.setChecked(self.expanded_categories["Monthly"])
-        
+
     def set_category_button_checked(self, category, checked):
         """
         Helper method to set the checked state of a category button.
-        
+
         Args:
             category (str): The name of the category.
             checked (bool): True to check, False to uncheck.
@@ -1226,6 +736,76 @@ class MainApp(QWidget):
             self.weekly_button.setChecked(checked)
         elif category == "Monthly":
             self.monthly_button.setChecked(checked)
+
+    def highlight_active_button(self, script_name):
+        """
+        Highlights the active button with the specified color and updates its status to 'running'.
+        """
+        # Reset styles for all buttons
+        for item in self.script_buttons:
+            widget = self.script_buttons[item]
+            widget.button.setStyleSheet("""
+                QPushButton {
+                    background-color: #ffffff;
+                    border: 1px solid #cccccc;
+                    border-radius: 8px;
+                    padding: 10px;
+                    text-align: center;
+                    color: black;
+                }
+                QPushButton:hover {
+                    background-color: #e6e6e6;
+                }
+                QPushButton:checked {
+                    background-color: #a0c4ff;
+                    border: 1px solid #89a4ff;
+                    color: black;
+                }
+            """)
+
+        # Highlight the active button with #A0C4FF
+        widget = self.script_buttons.get(script_name)
+        if widget:
+            widget.button.setStyleSheet("""
+                QPushButton {
+                    background-color: #A0C4FF;
+                    border: 1px solid #cccccc;
+                    border-radius: 8px;
+                    padding: 10px;
+                    text-align: center;
+                    color: black;
+                }
+                QPushButton:hover {
+                    background-color: #89a4ff;
+                }
+            """)
+
+    def handle_timeout(self):
+        if self.process and self.process.state() == QProcess.Running:
+            self.process.kill()
+            self.process = None
+            self.timer.stop()
+            if hasattr(self, 'pending_scripts'):
+                self.pending_scripts = []
+            self.animation_movie.stop()
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.set_buttons_enabled(True)
+            self.log_text.append(f"<span style='color: orange;'>Script '{self.current_script_name}' timed out.</span>")
+            # Update status to 'failed'
+            self.script_results[self.current_script_name] = 'failed'
+            self.script_buttons[self.current_script_name].set_status('failed')
+
+            # Hide loading GIF and cancel button
+            self.animation_movie.stop()
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.set_buttons_enabled(True)
+
+            if hasattr(self, 'pending_scripts') and self.pending_scripts:
+                self.run_next_script()
+            else:
+                self.show_summary()
 
 
 # Main entry point
