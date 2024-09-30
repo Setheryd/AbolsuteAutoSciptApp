@@ -301,7 +301,7 @@ def send_email(expiring_employees_str):
 
         # Define recipients
         mail.To = (
-            "alejandra.gamboa@absolutecaregivers.com; "
+            
             "kaitlyn.moss@absolutecaregivers.com; "
             "raegan.lopez@absolutecaregivers.com; "
             "ulyana.stokolosa@absolutecaregivers.com"
@@ -309,7 +309,7 @@ def send_email(expiring_employees_str):
         mail.CC = (
             "alexander.nazarov@absolutecaregivers.com; "
             "luke.kitchel@absolutecaregivers.com; "
-            "thea.banks@absolutecaregivers.com"
+            
         )
         mail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
 

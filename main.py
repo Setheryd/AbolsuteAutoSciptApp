@@ -32,6 +32,7 @@ weekly_items = sorted([
     "Clinician Info Source Pull",
     "IN Emp EVAL EXP",
     "IN Emp In-Services EXP",
+    "IN PAT SUP EXP",
     "Pending Admission",
     "Pending Caregiver Assignment",
     "Pending IHCC Admission",

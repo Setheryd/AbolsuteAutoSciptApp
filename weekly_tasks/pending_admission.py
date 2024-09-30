@@ -194,7 +194,7 @@ def send_email(pending_admissions):
     try:
         outlookApp = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
         outlookMail = outlookApp.CreateItem(0)
-        outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
+        outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com; Liliia.Reshetnyk@absolutecaregivers.com"
         outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
         outlookMail.Subject = "Pending Admissions Reminder"
 
