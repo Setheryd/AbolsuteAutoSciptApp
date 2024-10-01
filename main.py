@@ -306,6 +306,9 @@ class MainApp(QWidget):
 
         # Dictionary to map script names to their paths
         self.scripts = {
+            # Daily Scripts
+            "Employee Birthday Email": os.path.join(script_dir, "daily_tasks", "birthday.py"),
+            # Weekly Scripts
             "Caregiver ID Exp": os.path.join(script_dir, "weekly_tasks", "in_emp_id_exp.py"),
             "IN Emp EVAL EXP": os.path.join(script_dir, "weekly_tasks", "indy_emp_eval.py"),
             "IN Emp In-Services EXP": os.path.join(script_dir, "weekly_tasks", "in_emp_inservices_exp.py"),
@@ -434,6 +437,8 @@ class MainApp(QWidget):
                 button.setObjectName("run_all")
                 if self.current_category == "Weekly":
                     button.clicked.connect(self.run_all_weekly_items)
+                elif self.current_category == "Daily":
+                    button.clicked.connect(self.run_all_daily_items)
                 else:
                     button.clicked.connect(self.show_message)
                 # Wrap in ScriptButtonWidget without status indicator
@@ -479,6 +484,7 @@ class MainApp(QWidget):
             # Add the widget to the layout with horizontal center alignment
             self.button_layout.addWidget(script_widget, alignment=Qt.AlignHCenter)
 
+
     def select_subcategory(self, button):
         """
         Handles the selection of a sub-category button.
@@ -507,6 +513,41 @@ class MainApp(QWidget):
             msg_box.setWindowTitle("Button Clicked")
             msg_box.setText(f"You clicked: {button.text()}")
             msg_box.exec()
+    def run_all_daily_items(self):
+        try:
+            # Get the list of script paths for daily scripts
+            script_items = daily_items[1:]  # Skip "Run All"
+            self.pending_scripts = [(item, self.scripts[item]) for item in script_items if item in self.scripts]
+
+            # Initialize script results
+            self.script_results = {item: 'pending' for item, _ in self.pending_scripts}
+
+            # Reset status icons
+            for item in self.script_buttons:
+                self.script_buttons[item].set_status('pending')
+
+            # Disable the sub-category buttons
+            self.set_buttons_enabled(False)
+
+            # Show the animation and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            self.log_text.clear()
+
+            # Start the first script
+            self.run_next_script()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Exception", f"An error occurred:\n{str(e)}")
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
+
 
     def run_all_weekly_items(self):
         try:
