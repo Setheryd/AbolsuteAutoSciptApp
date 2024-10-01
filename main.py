@@ -18,7 +18,8 @@ from PySide6.QtWidgets import (  # type: ignore
     QFrame,
 )
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
-from PySide6.QtGui import QMovie, QIcon, QPixmap  # type: ignore
+from PySide6.QtGui import QMovie, QIcon, QPixmap, QPainter, QColor  # type: ignore
+
 
 # Categorized items (already sorted alphabetically)
 daily_items = sorted([
@@ -83,6 +84,20 @@ class ScriptButtonWidget(QWidget):
         layout.setSpacing(10)
         self.setLayout(layout)
 
+    def make_pixmap_white(self, pixmap):
+        """
+        Returns a white-tinted version of the given pixmap.
+        """
+        white_pixmap = QPixmap(pixmap.size())
+        white_pixmap.fill(Qt.transparent)
+        painter = QPainter(white_pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_Source)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(white_pixmap.rect(), QColor('white'))
+        painter.end()
+        return white_pixmap
+
     def update_status_icon(self):
         if not self.has_status:
             return
@@ -106,6 +121,10 @@ class ScriptButtonWidget(QWidget):
                 print(f"Failed to load pixmap from {icon_path}")
                 self.status_label.setText(self.status.capitalize())
             else:
+                # Tint 'pending.png' and 'running.png' to white
+                if self.status in ['pending', 'running']:
+                    pixmap = self.make_pixmap_white(pixmap)
+
                 self.status_label.setPixmap(pixmap.scaled(
                     self.status_label.size(),
                     Qt.KeepAspectRatio,
