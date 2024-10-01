@@ -321,7 +321,8 @@ class MainApp(QWidget):
             "SB Emp Inservices Exp": os.path.join(script_dir, "weekly_tasks", "sb_emp_inservices_exp.py"),
             "SB ID EXP": os.path.join(script_dir, "weekly_tasks", "sb_emp_id_exp.py"),
             "SB PAT SUP EXP": os.path.join(script_dir, "weekly_tasks", "sb_pat_sup_exp.py"),
-            # Add other scripts as needed
+            # Monthly Scripts
+            "Age Notification": os.path.join(script_dir, "monthly_tasks", "age.py"),
         }
 
         # Dictionary to store script buttons
@@ -439,6 +440,8 @@ class MainApp(QWidget):
                     button.clicked.connect(self.run_all_weekly_items)
                 elif self.current_category == "Daily":
                     button.clicked.connect(self.run_all_daily_items)
+                elif self.current_category == "Monthly":  # Add this condition
+                    button.clicked.connect(self.run_all_monthly_items)
                 else:
                     button.clicked.connect(self.show_message)
                 # Wrap in ScriptButtonWidget without status indicator
@@ -483,7 +486,6 @@ class MainApp(QWidget):
 
             # Add the widget to the layout with horizontal center alignment
             self.button_layout.addWidget(script_widget, alignment=Qt.AlignHCenter)
-
 
     def select_subcategory(self, button):
         """
@@ -581,6 +583,43 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
+
+    def run_all_monthly_items(self):
+        try:
+            # Get the list of script paths for monthly scripts
+            script_items = monthly_items[1:]  # Skip "Run All"
+            self.pending_scripts = [(item, self.scripts[item]) for item in script_items if item in self.scripts]
+
+            # Initialize script results
+            self.script_results = {item: 'pending' for item, _ in self.pending_scripts}
+
+            # Reset status icons
+            for item in self.script_buttons:
+                if item in self.scripts:  # Ensure it's a monthly script
+                    self.script_buttons[item].set_status('pending')
+
+            # Disable the sub-category buttons
+            self.set_buttons_enabled(False)
+
+            # Show the animation and cancel button
+            self.animation_label.show()
+            self.animation_movie.start()
+            self.cancel_button.show()
+            self.log_text.show()
+            self.log_label.show()
+            self.log_text.clear()
+
+            # Start the first script
+            self.run_next_script()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Exception", f"An error occurred:\n{str(e)}")
+            self.set_buttons_enabled(True)
+            self.animation_label.hide()
+            self.cancel_button.hide()
+            self.log_text.hide()
+            self.log_label.hide()
+
 
     def run_next_script(self):
         if self.pending_scripts:
