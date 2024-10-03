@@ -8,25 +8,31 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 # File handler for logging to a file
-file_handler = logging.FileHandler('extract_eligible_patients.log')
+file_handler = logging.FileHandler("extract_eligible_patients.log")
 file_handler.setLevel(logging.DEBUG)
-file_formatter = logging.Formatter('%(asctime)s %(levelname)s:%(message)s')
+file_formatter = logging.Formatter("%(asctime)s %(levelname)s:%(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
 # Console handler for logging to the console
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)  # Set to DEBUG for more detailed console output
-console_formatter = logging.Formatter('%(asctime)s %(levelname)s:%(message)s')
+console_formatter = logging.Formatter("%(asctime)s %(levelname)s:%(message)s")
 console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)
+
+# Define the xlUp constant directly
+XL_UP = -4162
+
 
 def find_file(base_path, filename, max_depth=5):
     """
     Optimized search for a file in a directory up to a specified depth using os.scandir for speed.
     """
-    logging.debug(f"Searching for '{filename}' in '{base_path}' up to depth {max_depth}")
-    
+    logging.debug(
+        f"Searching for '{filename}' in '{base_path}' up to depth {max_depth}"
+    )
+
     def scan_directory(path, current_depth):
         if current_depth > max_depth:
             logging.debug(f"Maximum search depth reached at '{path}'")
@@ -44,14 +50,16 @@ def find_file(base_path, filename, max_depth=5):
         except PermissionError as e:
             logging.warning(f"PermissionError accessing '{path}': {e}")
             return None
+
     return scan_directory(base_path, 0)
+
 
 def extract_eligible_patients():
     try:
         username = os.getlogin()
         base_path = f"C:\\Users\\{username}\\OneDrive - Ability Home Health, LLC\\"
         logging.debug(f"Base path set to: {base_path}")
-        
+
         if not os.path.exists(base_path):
             logging.error(f"Base path does not exist: {base_path}")
             return None
@@ -66,11 +74,13 @@ def extract_eligible_patients():
             "Units Record SFC 2023-2024.xlsx": "Absolute Billing and Payroll",
             "Units Record IHCC 2023-2024.xlsx": "Absolute Billing and Payroll",
             "Units Record PERS 2023-2024.xlsx": "Absolute Billing and Payroll",
-            "Units Record NS 2023-2024.xlsx": "Absolute Billing and Payroll"
+            "Units Record NS 2023-2024.xlsx": "Absolute Billing and Payroll",
         }
 
         # It's recommended to use environment variables for sensitive information
-        password = os.getenv("EXCEL_PASSWORD", "abs$0321$S")  # Replace with secure method in production
+        password = os.getenv(
+            "EXCEL_PASSWORD", "abs$0321$S"
+        )  # Replace with secure method in production
         collected_data = []
 
         try:
@@ -100,28 +110,30 @@ def extract_eligible_patients():
                 # Verify the file is in the correct subdirectory
                 normalized_path = os.path.normpath(file_path)
                 if required_subdir.lower() not in normalized_path.lower():
-                    logging.warning(f"File '{filename}' is not in the required subdirectory '{required_subdir}'. Found path: '{file_path}'")
+                    logging.warning(
+                        f"File '{filename}' is not in the required subdirectory '{required_subdir}'. Found path: '{file_path}'"
+                    )
                     continue
 
                 logging.info(f"Opening file: {file_path}")
 
                 try:
                     wb = excel.Workbooks.Open(
-                        file_path,            # Filename
-                        False,                # UpdateLinks
-                        True,                 # ReadOnly
-                        None,                 # Format
-                        password,             # Password
-                        '',                   # WriteResPassword
-                        True,                 # IgnoreReadOnlyRecommended
-                        None,                 # Origin
-                        None,                 # Delimiter
-                        False,                # Editable
-                        False,                # Notify
-                        None,                 # Converter
-                        False,                # AddToMru
-                        False,                # Local
-                        0                     # CorruptLoad
+                        file_path,  # Filename
+                        False,  # UpdateLinks
+                        True,  # ReadOnly
+                        None,  # Format
+                        password,  # Password
+                        "",  # WriteResPassword
+                        True,  # IgnoreReadOnlyRecommended
+                        None,  # Origin
+                        None,  # Delimiter
+                        False,  # Editable
+                        False,  # Notify
+                        None,  # Converter
+                        False,  # AddToMru
+                        False,  # Local
+                        0,  # CorruptLoad
                     )
                     workbooks[filename] = wb
                     logging.debug(f"Workbook '{filename}' opened successfully.")
@@ -135,11 +147,15 @@ def extract_eligible_patients():
                 try:
                     ws = wb.Sheets("Expired NOAs")
                     # Get the last used row in column C and G
-                    last_row_c = ws.Cells(ws.Rows.Count, "C").End(win32.constants.xlUp).Row
-                    last_row_g = ws.Cells(ws.Rows.Count, "G").End(win32.constants.xlUp).Row
+                    last_row_c = ws.Cells(ws.Rows.Count, "C").End(XL_UP).Row
+                    last_row_g = ws.Cells(ws.Rows.Count, "G").End(XL_UP).Row
                     last_row = max(last_row_c, last_row_g)
-                    logging.debug(f"Last row in column C for '{filename}': {last_row_c}")
-                    logging.debug(f"Last row in column G for '{filename}': {last_row_g}")
+                    logging.debug(
+                        f"Last row in column C for '{filename}': {last_row_c}"
+                    )
+                    logging.debug(
+                        f"Last row in column G for '{filename}': {last_row_g}"
+                    )
                     logging.debug(f"Overall last row for '{filename}': {last_row}")
 
                     # First, process all entries from column C
@@ -154,11 +170,15 @@ def extract_eligible_patients():
                                     # It's the first entry from column C, mark as category
                                     collected_data.append(f"CATEGORY: {name_c}")
                                     first_entry_c = False
-                                    logging.debug(f"Marked as CATEGORY from column C, row {row}: {name_c}")
+                                    logging.debug(
+                                        f"Marked as CATEGORY from column C, row {row}: {name_c}"
+                                    )
                                 else:
                                     # Subsequent entries from column C, mark as item
                                     collected_data.append(f"ITEM: {name_c}")
-                                    logging.debug(f"Marked as ITEM from column C, row {row}: {name_c}")
+                                    logging.debug(
+                                        f"Marked as ITEM from column C, row {row}: {name_c}"
+                                    )
 
                     # Then, process all entries from column G
                     first_entry_g = True
@@ -172,11 +192,15 @@ def extract_eligible_patients():
                                     # It's the first entry from column G, mark as category
                                     collected_data.append(f"CATEGORY: {name_g}")
                                     first_entry_g = False
-                                    logging.debug(f"Marked as CATEGORY from column G, row {row}: {name_g}")
+                                    logging.debug(
+                                        f"Marked as CATEGORY from column G, row {row}: {name_g}"
+                                    )
                                 else:
                                     # Subsequent entries from column G, mark as item
                                     collected_data.append(f"ITEM: {name_g}")
-                                    logging.debug(f"Marked as ITEM from column G, row {row}: {name_g}")
+                                    logging.debug(
+                                        f"Marked as ITEM from column G, row {row}: {name_g}"
+                                    )
 
                     logging.info(f"Processed workbook '{filename}' successfully.")
 
@@ -210,6 +234,7 @@ def extract_eligible_patients():
         logging.error(f"Error in extract_eligible_patients: {e}")
         return None
 
+
 def get_signature_by_path(sig_path):
     """
     Retrieves the email signature from the specified file path.
@@ -221,12 +246,13 @@ def get_signature_by_path(sig_path):
         str: The signature HTML content if available, otherwise None.
     """
     try:
-        with open(sig_path, 'r', encoding='utf-8') as file:
+        with open(sig_path, "r", encoding="utf-8") as file:
             signature = file.read()
         return signature
     except Exception as e:
         logging.error(f"Unable to retrieve signature from '{sig_path}': {e}")
         return None
+
 
 def get_default_outlook_email():
     """
@@ -252,6 +278,7 @@ def get_default_outlook_email():
         logging.error(f"Unable to retrieve default Outlook email: {e}")
         return None
 
+
 def get_default_signature():
     """
     Retrieves the user's default email signature based on their default Outlook account.
@@ -265,19 +292,19 @@ def get_default_signature():
         return None
 
     # Define the signature directory
-    appdata = os.environ.get('APPDATA')
+    appdata = os.environ.get("APPDATA")
     if not appdata:
         logging.error("APPDATA environment variable not found.")
         return None
 
-    sig_dir = os.path.join(appdata, 'Microsoft', 'Signatures')
+    sig_dir = os.path.join(appdata, "Microsoft", "Signatures")
     if not os.path.isdir(sig_dir):
         logging.error(f"Signature directory does not exist: '{sig_dir}'")
         return None
 
     # Iterate through signature files to find a match
     for filename in os.listdir(sig_dir):
-        if filename.lower().endswith(('.htm', '.html')):
+        if filename.lower().endswith((".htm", ".html")):
             # Extract the base name without extension
             base_name = os.path.splitext(filename)[0].lower()
             if email.lower() in base_name:
@@ -290,6 +317,7 @@ def get_default_signature():
     logging.error(f"No signature file found containing email: '{email}'")
     return None
 
+
 def send_email(expiring_employees_str):
     """
     Compose and send an email via Outlook with the list of expiring employees.
@@ -299,7 +327,9 @@ def send_email(expiring_employees_str):
     """
     try:
         # Initialize Outlook application object using DispatchEx for better performance
-        outlookApp = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
+        outlookApp = win32.DispatchEx(
+            "Outlook.Application"
+        )  # Changed from Dispatch to DispatchEx
         mail = outlookApp.CreateItem(0)  # 0: olMailItem
 
         # Define recipients
@@ -392,14 +422,15 @@ def send_email(expiring_employees_str):
     finally:
         # Release COM objects to free up resources
         try:
-            if 'mail' in locals() and mail:
+            if "mail" in locals() and mail:
                 del mail
-            if 'outlookApp' in locals() and outlookApp:
+            if "outlookApp" in locals() and outlookApp:
                 del outlookApp
             logging.debug("Released COM objects for Outlook.")
         except Exception as cleanup_error:
             logging.error(f"Error during cleanup: {cleanup_error}")
             print(f"Error during cleanup: {cleanup_error}")
+
 
 def main():
     logging.info("Script started.")
@@ -411,6 +442,7 @@ def main():
         logging.info("No expiring patient data to send.")
         print("No expiring patient data to send.")
     logging.info("Script finished.")
+
 
 if __name__ == "__main__":
     main()
