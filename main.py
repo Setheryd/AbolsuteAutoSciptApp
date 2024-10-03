@@ -145,7 +145,7 @@ class MainApp(QWidget):
 
         # Set up the window properties
         self.setWindowTitle("Absolute Caregivers Auto Scripting App")
-        self.setGeometry(100, 100, 1200, 800)  # Adjusted height for better layout
+        self.setGeometry(100, 100, 600, 600)  # Adjusted height for better layout
 
         # Main layout
         self.main_layout = QHBoxLayout()
@@ -209,6 +209,7 @@ class MainApp(QWidget):
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.button_layout.setSpacing(10)
         self.button_layout.setAlignment(Qt.AlignTop)  # Ensure top alignment
+        
         self.button_container.setLayout(self.button_layout)
 
         # Create a scroll area to hold the sub-category buttons
@@ -301,8 +302,8 @@ class MainApp(QWidget):
         # Update styles initially
         self.update_category_styles()
 
-        # Adjust size to fit the content
-        self.adjustSize()
+        # # Adjust size to fit the content
+        # self.adjustSize()
 
         # Dictionary to map script names to their paths
         self.scripts = {
@@ -404,7 +405,7 @@ class MainApp(QWidget):
         # Update button styles to reflect current selection
         self.update_category_styles()
         # Adjust window size based on content
-        self.adjustSize()
+        # self.adjustSize()
 
     def clear_buttons(self):
         """
@@ -487,7 +488,7 @@ class MainApp(QWidget):
             button.clicked.connect(lambda checked, btn=button: self.select_subcategory(btn))
 
             # Add the widget to the layout with horizontal center alignment
-            self.button_layout.addWidget(script_widget, alignment=Qt.AlignHCenter)
+            self.button_layout.addWidget(script_widget, alignment=Qt.AlignLeft)
 
     def select_subcategory(self, button):
         """
