@@ -145,7 +145,7 @@ def extract_eligible_patients():
             for filename, wb in workbooks.items():
                 logging.info(f"Processing workbook: {filename}")
                 try:
-                    ws = wb.Sheets("Expired NOAs")
+                    ws = wb.Sheets("No Units Next Month")
                     # Get the last used row in column C and G
                     last_row_c = ws.Cells(ws.Rows.Count, "C").End(XL_UP).Row
                     last_row_g = ws.Cells(ws.Rows.Count, "G").End(XL_UP).Row
@@ -342,7 +342,7 @@ def send_email(expiring_employees_str):
             "alexander.nazarov@absolutecaregivers.com; "
             "luke.kitchel@absolutecaregivers.com; "
         )
-        mail.Subject = "Monthly Update: Expired or Expiring Patients' Authorizations"
+        mail.Subject = "Monthly Update: Next Months Expired Patients' Authorizations"
 
         # Get the default signature
         signature = get_default_signature()
@@ -351,7 +351,7 @@ def send_email(expiring_employees_str):
         email_body = (
             "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
             "<p>Hello Team,</p>"
-            "<p>This is an automated email generated using the billing files to track and maintain records of patients who may not have authorized units. "
+            "<p>This is an automated email generated using the billing files to track and maintain records of patients who may not have authorized units next month. "
             "The accuracy of the names and details in this list depends on the maintenance and precision of the billing files themselves. "
             "Please review the attached information carefully and ensure that any discrepancies are addressed promptly.</p>"
             "<p>Thank you for your attention to this matter.</p>"

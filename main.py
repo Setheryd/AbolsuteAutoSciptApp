@@ -323,6 +323,8 @@ class MainApp(QWidget):
             "SB PAT SUP EXP": os.path.join(script_dir, "weekly_tasks", "sb_pat_sup_exp.py"),
             # Monthly Scripts
             "Age Notification": os.path.join(script_dir, "monthly_tasks", "age.py"),
+            "Expired NOAs": os.path.join(script_dir, "monthly_tasks", "NOA_exp.py"),
+            "Next Months Expired NOAs": os.path.join(script_dir, "monthly_tasks", "next_month_NOA_exp.py"),
         }
 
         # Dictionary to store script buttons
@@ -333,7 +335,7 @@ class MainApp(QWidget):
 
         # Timer for timeout
         self.timer = QTimer(self)
-        self.timer.setInterval(45000)  # 45 seconds
+        self.timer.setInterval(60000)  # 45 seconds
         self.timer.timeout.connect(self.handle_timeout)
 
     def create_category_button(self, text, items, identifier):
