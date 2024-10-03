@@ -151,11 +151,12 @@ class MainApp(QWidget):
         self.main_layout = QHBoxLayout()
         self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setSpacing(20)
+        # self.main_layout.setAlignment(Qt.AlignTop)
 
         # Left-side layout for category buttons (top-aligned)
         self.category_layout = QVBoxLayout()
-        self.category_layout.setContentsMargins(20, 20, 20, 20)
-        self.category_layout.setSpacing(20)
+        # self.category_layout.setContentsMargins(20, 20, 20, 20)
+        self.category_layout.setSpacing(10)
         self.category_layout.setAlignment(Qt.AlignTop)  # Ensure top alignment
 
         # Add "Categories" header with additional styling
@@ -165,7 +166,7 @@ class MainApp(QWidget):
                 font-size: 18pt;
                 font-weight: bold;
                 color: #A0C4FF;  
-                padding: 5px;
+                
             }
         """)
         self.category_layout.addWidget(categories_header, alignment=Qt.AlignCenter)
@@ -186,10 +187,10 @@ class MainApp(QWidget):
         self.main_layout.addWidget(self.category_container)
 
         # Middle layout (right_layout)
-        self.right_layout = QVBoxLayout()
-        self.right_layout.setContentsMargins(0, 0, 0, 0)
-        self.right_layout.setSpacing(10)
-        self.right_layout.setAlignment(Qt.AlignTop)
+        self.middle_layout = QVBoxLayout()
+        self.middle_layout.setContentsMargins(0, 0, 0, 0)
+        self.middle_layout.setSpacing(10)
+        self.middle_layout.setAlignment(Qt.AlignTop)
 
         # Add "Scripts" header with additional styling
         scripts_header = QLabel("Scripts")
@@ -198,10 +199,10 @@ class MainApp(QWidget):
                 font-size: 18pt;
                 font-weight: bold;
                 color: #A0C4FF; 
-                padding: 5px;
+                margin-top: 6px;
             }
         """)
-        self.right_layout.addWidget(scripts_header, alignment=Qt.AlignCenter)
+        self.middle_layout.addWidget(scripts_header, alignment=Qt.AlignCenter)
 
         # Right-side container for sub-category buttons (top-aligned)
         self.button_container = QWidget()
@@ -209,7 +210,7 @@ class MainApp(QWidget):
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.button_layout.setSpacing(10)
         self.button_layout.setAlignment(Qt.AlignTop)  # Ensure top alignment
-        
+
         self.button_container.setLayout(self.button_layout)
 
         # Create a scroll area to hold the sub-category buttons
@@ -219,13 +220,15 @@ class MainApp(QWidget):
         self.scroll_area.setMinimumWidth(350)  # Increased width to accommodate status icons
 
         # Add the scroll area to the right layout
-        self.right_layout.addWidget(self.scroll_area)
+        self.middle_layout.addWidget(self.scroll_area)
 
-        # Create a widget to hold the right_layout
-        self.right_container = QWidget()
-        self.right_container.setLayout(self.right_layout)
-        self.right_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.main_layout.addWidget(self.right_container)
+        # Create a widget to hold the middle_layout
+        self.middle_container = QWidget()
+        self.middle_container.setLayout(self.middle_layout)
+        self.middle_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.main_layout.addWidget(self.middle_container)
+
+        self.middle_container.setMaximumWidth(350)
 
         # Indicator layout (Rightmost column)
         self.indicator_layout = QVBoxLayout()
@@ -327,6 +330,8 @@ class MainApp(QWidget):
             "Expired NOAs": os.path.join(script_dir, "monthly_tasks", "NOA_exp.py"),
             "Next Months Expired NOAs": os.path.join(script_dir, "monthly_tasks", "next_month_NOA_exp.py"),
         }
+
+        self.main_layout.addStretch()
 
         # Dictionary to store script buttons
         self.script_buttons = {}
@@ -553,7 +558,6 @@ class MainApp(QWidget):
             self.log_text.hide()
             self.log_label.hide()
 
-
     def run_all_weekly_items(self):
         try:
             # Get the list of script paths for weekly scripts
@@ -622,7 +626,6 @@ class MainApp(QWidget):
             self.cancel_button.hide()
             self.log_text.hide()
             self.log_label.hide()
-
 
     def run_next_script(self):
         if self.pending_scripts:
