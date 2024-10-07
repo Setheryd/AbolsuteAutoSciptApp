@@ -16,10 +16,23 @@ from PySide6.QtWidgets import (  # type: ignore
     QTextEdit,
     QSpacerItem,
     QFrame,
+    QFileDialog,
+    QTableWidget,
+    QTabWidget,
+    QTableWidgetSelectionRange,
+    QComboBox,
+    QSpinBox,
+    QTableWidgetItem
+    
 )
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
 from PySide6.QtGui import QMovie, QIcon, QPixmap, QPainter, QColor  # type: ignore
-
+import pandas as pd
+from io import StringIO
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import mplcursors # type: ignore
+import matplotlib.pyplot as plt
 
 # Categorized items (already sorted alphabetically)
 daily_items = sorted([
@@ -137,7 +150,11 @@ class ScriptButtonWidget(QWidget):
     def set_status(self, status):
         self.status = status
         self.update_status_icon()
-
+        
+class MplCanvas(FigureCanvas):
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        self.fig, self.ax = plt.subplots(figsize=(width, height), dpi=dpi)
+        super(MplCanvas, self).__init__(self.fig)
 
 class MainApp(QWidget):
     def __init__(self):
@@ -145,28 +162,64 @@ class MainApp(QWidget):
 
         # Set up the window properties
         self.setWindowTitle("Absolute Caregivers Auto Scripting App")
-        self.setGeometry(100, 100, 600, 600)  # Adjusted height for better layout
+        self.setGeometry(100, 100, 600, 600)  # Increased size for better layout
 
-        # Main layout
-        self.main_layout = QHBoxLayout()
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_layout.setSpacing(20)
-        # self.main_layout.setAlignment(Qt.AlignTop)
+        # Create a QTabWidget for switching between tabs
+        self.tab_widget = QTabWidget(self)
+
+        # Primary Scripts Tab
+        self.scripts_tab = QWidget()
+        self.setup_scripts_tab()
+        self.tab_widget.addTab(self.scripts_tab, "Scripts")
+
+        # Dashboard Tab (if needed)
+        self.secondary_tab = QWidget()
+        self.setup_secondary_tab()
+        self.tab_widget.addTab(self.secondary_tab, "Dashboard")
+
+        # Graph Tab (if needed)
+        self.graph_tab = QWidget()
+        self.setup_graph_tab()
+        self.tab_widget.addTab(self.graph_tab, "Graph")
+
+        # Main layout to hold the QTabWidget
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.tab_widget)
+        self.setLayout(main_layout)
+
+        # Initialize script mapping and other necessary variables
+        #self.initialize_script_mapping()
+
+        # Initialize QProcess
+        self.process = None
+
+        # Initialize selected subcategory button
+        self.selected_subcategory_button = None
+
+        # Timer for timeout
+        self.timer = QTimer(self)
+        self.timer.setInterval(60000)  # 60 seconds
+        self.timer.timeout.connect(self.handle_timeout)
+
+    def setup_scripts_tab(self):
+        """Set up the layout for the Scripts tab."""
+        # Main layout for the Scripts tab
+        scripts_layout = QHBoxLayout(self.scripts_tab)
+        scripts_layout.setContentsMargins(20, 20, 20, 20)
+        scripts_layout.setSpacing(20)
 
         # Left-side layout for category buttons (top-aligned)
         self.category_layout = QVBoxLayout()
-        # self.category_layout.setContentsMargins(20, 20, 20, 20)
         self.category_layout.setSpacing(10)
-        self.category_layout.setAlignment(Qt.AlignTop)  # Ensure top alignment
+        self.category_layout.setAlignment(Qt.AlignTop)
 
-        # Add "Categories" header with additional styling
+        # "Categories" header
         categories_header = QLabel("Categories")
         categories_header.setStyleSheet("""
             QLabel {
                 font-size: 18pt;
                 font-weight: bold;
-                color: #A0C4FF;  
-                
+                color: #A0C4FF;
             }
         """)
         self.category_layout.addWidget(categories_header, alignment=Qt.AlignCenter)
@@ -180,19 +233,18 @@ class MainApp(QWidget):
         self.category_layout.addWidget(self.weekly_button)
         self.category_layout.addWidget(self.monthly_button)
 
-        # Create a widget to hold the category buttons and add it to the left side
+        # Container for category buttons
         self.category_container = QWidget()
         self.category_container.setLayout(self.category_layout)
         self.category_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.main_layout.addWidget(self.category_container)
+        scripts_layout.addWidget(self.category_container)
 
-        # Middle layout (right_layout)
-        self.middle_layout = QVBoxLayout()
-        self.middle_layout.setContentsMargins(0, 0, 0, 0)
-        self.middle_layout.setSpacing(10)
-        self.middle_layout.setAlignment(Qt.AlignTop)
+        # Middle layout for the script buttons
+        self.script_layout = QVBoxLayout()
+        self.script_layout.setSpacing(10)
+        self.script_layout.setAlignment(Qt.AlignTop)
 
-        # Add "Scripts" header with additional styling
+        # "Scripts" header
         scripts_header = QLabel("Scripts")
         scripts_header.setStyleSheet("""
             QLabel {
@@ -202,33 +254,25 @@ class MainApp(QWidget):
                 margin-top: 6px;
             }
         """)
-        self.middle_layout.addWidget(scripts_header, alignment=Qt.AlignCenter)
+        self.script_layout.addWidget(scripts_header, alignment=Qt.AlignCenter)
 
-        # Right-side container for sub-category buttons (top-aligned)
+        # Container for sub-category buttons
         self.button_container = QWidget()
         self.button_layout = QVBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.button_layout.setSpacing(10)
-        self.button_layout.setAlignment(Qt.AlignTop)  # Ensure top alignment
-
+        self.button_layout.setAlignment(Qt.AlignTop)
         self.button_container.setLayout(self.button_layout)
 
-        # Create a scroll area to hold the sub-category buttons
+        # Scroll area to hold the sub-category buttons
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.button_container)
-        self.scroll_area.setMinimumWidth(350)  # Increased width to accommodate status icons
+        self.scroll_area.setMinimumWidth(350)
+        self.script_layout.addWidget(self.scroll_area)
 
-        # Add the scroll area to the right layout
-        self.middle_layout.addWidget(self.scroll_area)
-
-        # Create a widget to hold the middle_layout
-        self.middle_container = QWidget()
-        self.middle_container.setLayout(self.middle_layout)
-        self.middle_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.main_layout.addWidget(self.middle_container)
-
-        self.middle_container.setMaximumWidth(350)
+        # Add the script layout to the main scripts_layout
+        scripts_layout.addLayout(self.script_layout)
 
         # Indicator layout (Rightmost column)
         self.indicator_layout = QVBoxLayout()
@@ -237,15 +281,15 @@ class MainApp(QWidget):
 
         # Animation Label
         self.animation_label = QLabel(self)
-        self.animation_label.setFixedSize(100, 100)  # Increased size for better visibility
+        self.animation_label.setFixedSize(100, 100)
         script_dir = os.path.dirname(os.path.abspath(__file__))
         loading_gif_path = os.path.join(script_dir, "resources", "loading.gif")
         if not os.path.exists(loading_gif_path):
             print(f"Loading GIF not found at {loading_gif_path}. Please ensure the file exists.")
         self.animation_movie = QMovie(loading_gif_path)
         self.animation_label.setMovie(self.animation_movie)
-        self.animation_label.setAlignment(Qt.AlignCenter)  # Center the GIF within the label
-        self.animation_label.setScaledContents(True)  # Scale the GIF to fit the label
+        self.animation_label.setAlignment(Qt.AlignCenter)
+        self.animation_label.setScaledContents(True)
         self.animation_label.hide()  # Hide initially
 
         # Cancel Button
@@ -277,17 +321,14 @@ class MainApp(QWidget):
         self.indicator_layout.addWidget(self.log_label, alignment=Qt.AlignLeft)
         self.indicator_layout.addWidget(self.log_text, alignment=Qt.AlignCenter)
 
-        # Add a spacer to push indicators to the top
+        # Spacer to push indicators to the top
         self.indicator_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
-        # Create a widget to hold the indicator_layout
+        # Container for indicators
         self.indicator_container = QWidget()
         self.indicator_container.setLayout(self.indicator_layout)
         self.indicator_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.main_layout.addWidget(self.indicator_container)
-
-        # Set the main layout for the widget
-        self.setLayout(self.main_layout)
+        scripts_layout.addWidget(self.indicator_container)
 
         # State to track expanded categories
         self.expanded_categories = {
@@ -296,15 +337,11 @@ class MainApp(QWidget):
             "Monthly": False
         }
 
-        # Initialize QProcess
-        self.process = None
-
-        # Initialize selected subcategory button
-        self.selected_subcategory_button = None
+        # Dictionary to store script buttons (if needed for further management)
+        self.script_buttons = {}
 
         # Update styles initially
         self.update_category_styles()
-
         # # Adjust size to fit the content
         # self.adjustSize()
 
@@ -331,8 +368,6 @@ class MainApp(QWidget):
             "Next Months Expired NOAs": os.path.join(script_dir, "monthly_tasks", "next_month_NOA_exp.py"),
         }
 
-        self.main_layout.addStretch()
-
         # Dictionary to store script buttons
         self.script_buttons = {}
 
@@ -343,6 +378,296 @@ class MainApp(QWidget):
         self.timer = QTimer(self)
         self.timer.setInterval(60000)  # 45 seconds
         self.timer.timeout.connect(self.handle_timeout)
+        
+    def setup_secondary_tab(self):
+        """Set up the layout for the secondary tab."""
+        self.secondary_layout = QVBoxLayout(self.secondary_tab)
+
+        # Left-side layout for file list buttons (Removed as no longer needed)
+        # If you still want to keep any buttons on the left, you can repurpose this layout.
+        # Otherwise, it can be removed entirely.
+        # For this example, we'll remove it.
+
+        # Middle layout for the file list and table
+        self.file_list_layout = QVBoxLayout()
+        self.file_list_layout.setAlignment(Qt.AlignTop)
+
+        # Create a single file list as a scrollable area
+        self.file_list_scroll = self.create_scrollable_file_list([
+            "Admission_by_Month.py", 
+            "Patient_Data.py", 
+            "Report3.py",
+            "Report4.py", 
+            "Report5.py", 
+            "Report6.py"
+        ])
+
+        # Add scroll area to the middle layout
+        self.file_list_layout.addWidget(self.file_list_scroll)
+
+        self.secondary_layout.addLayout(self.file_list_layout)
+
+        # Right-side layout for displaying the DataFrame (QTableWidget)
+        self.table_widget = QTableWidget()
+        self.table_widget.setColumnCount(0)
+        self.table_widget.setRowCount(0)
+        self.table_widget.setFixedHeight(400)  # Set a fixed height for the table
+        self.table_widget.setStyleSheet("""
+            QTableWidget {
+                background-color: #f0f0f0;
+                color: black;
+            }
+        """)
+
+        # Buttons for saving and copying DataFrame
+        self.save_dataframe_button = QPushButton("Save DataFrame")
+        self.save_dataframe_button.clicked.connect(self.save_dataframe)
+
+        self.copy_selected_button = QPushButton("Copy Selected")
+        self.copy_selected_button.clicked.connect(self.copy_selected_data)
+
+        # Add the buttons to the secondary layout
+        self.secondary_layout.addWidget(self.save_dataframe_button)
+        self.secondary_layout.addWidget(self.copy_selected_button)
+
+        # Add the table widget to the secondary layout
+        self.secondary_layout.addWidget(self.table_widget)
+
+        # Set the layout to the secondary tab
+        self.secondary_tab.setLayout(self.secondary_layout)
+
+        
+    def setup_graph_tab(self):
+        """Set up the layout for the graph tab."""
+        self.graph_layout = QVBoxLayout(self.graph_tab)
+
+        # Create dropdowns for X-axis and Y-axis selection
+        self.x_axis_combo = QComboBox(self)
+        self.y_axis_combo = QComboBox(self)
+
+        # Add a label for X-axis
+        self.x_axis_label = QLabel("Select X-axis:")
+        self.graph_layout.addWidget(self.x_axis_label)
+        self.graph_layout.addWidget(self.x_axis_combo)
+
+        # Add a label for Y-axis
+        self.y_axis_label = QLabel("Select Y-axis:")
+        self.graph_layout.addWidget(self.y_axis_label)
+        self.graph_layout.addWidget(self.y_axis_combo)
+
+        # Add a spinbox to control the number of labels on the X-axis
+        self.label_spinbox = QSpinBox(self)
+        self.label_spinbox.setRange(1, 20)  # Set a reasonable range for label steps
+        self.label_spinbox.setValue(6)  # Default value for step count
+        self.label_spinbox.setSuffix(" labels")  # Add a label suffix
+
+        self.label_spinbox_label = QLabel("Number of X-axis labels to display:")
+        self.graph_layout.addWidget(self.label_spinbox_label)
+        self.graph_layout.addWidget(self.label_spinbox)
+        
+        # Add a button to plot the graph
+        self.plot_button = QPushButton("Plot Graph", self)
+        self.plot_button.clicked.connect(self.plot_graph)
+        self.graph_layout.addWidget(self.plot_button)
+
+        # Set up the matplotlib canvas
+        self.canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        self.graph_layout.addWidget(self.canvas)
+
+        # Initialize an empty Axes
+        self.canvas.ax = self.canvas.figure.add_subplot(111)
+
+        self.graph_tab.setLayout(self.graph_layout)
+    
+    def plot_graph(self):
+        """Plot the graph with the selected X and Y axis, and enable click to show data values."""
+        # Clear the previous plot
+        self.canvas.ax.clear()
+
+        # Get the selected X and Y columns
+        x_column = self.x_axis_combo.currentText()
+        y_column = self.y_axis_combo.currentText()
+
+        # Get the number of labels to show from the spinbox
+        max_labels = self.label_spinbox.value()
+
+        # Plot the graph
+        x_data = self.df[x_column]
+        y_data = self.df[y_column]
+
+        # Scatter plot with labels
+        scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True)
+
+        # Set axis labels
+        self.canvas.ax.set_xlabel(x_column)
+        self.canvas.ax.set_ylabel(y_column)
+
+        # Ensure proper tick placement for X-axis labels
+        num_points = len(x_data)
+        step = max(1, num_points // max_labels)  # Calculate step based on number of labels
+
+        # Set X-axis ticks and labels
+        tick_indices = range(0, num_points, step)
+        self.canvas.ax.set_xticks([x_data[i] for i in tick_indices])
+        self.canvas.ax.set_xticklabels([x_data[i] for i in tick_indices], ha="right")
+        
+        self.canvas.figure.tight_layout()
+
+        # Redraw the canvas
+        self.canvas.draw()
+
+        # Connect the click event to show data point value
+        self.canvas.mpl_connect("pick_event", self.on_click)
+
+    def on_click(self, event):
+        """Handle click events on the plot and display the clicked data point value."""
+        if event.artist != self.canvas.ax.collections[0]:
+            return
+
+        # Get the index of the clicked data point
+        ind = event.ind[0]
+        x_column = self.x_axis_combo.currentText()
+        y_column = self.y_axis_combo.currentText()
+
+        # Get the data point values
+        x_value = self.df[x_column].iloc[ind]
+        y_value = self.df[y_column].iloc[ind]
+
+        # Show the data point value in a message box
+        QMessageBox.information(self, "Data Point", f"X: {x_value}\nY: {y_value}")
+
+
+        
+    def create_scrollable_file_list(self, file_names):
+        """Create a scrollable area containing buttons for the given file names."""
+        # Container widget for the file buttons
+        container_widget = QWidget()
+        layout = QVBoxLayout(container_widget)
+
+        # Add file buttons to the layout
+        for file_name in file_names:
+            button = QPushButton(file_name)
+            button.clicked.connect(lambda checked, file=file_name: self.run_python_script(file))
+            layout.addWidget(button)
+
+        # Scroll area to make the file list scrollable
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(container_widget)
+        
+        # Set a fixed width for the scroll area and allow vertical expansion
+        # scroll_area.setFixedWidth(400)  # Set the fixed width as needed
+        scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Fixed width, expands vertically
+
+        return scroll_area
+
+    def display_dataframe(self, df):
+        """
+        Display a Pandas DataFrame in the QTableWidget on the dashboard.
+        """
+        self.df = df  # Store the DataFrame for export
+        self.table_widget.clear()
+
+        # Set row and column count based on the DataFrame
+        self.table_widget.setRowCount(df.shape[0])
+        self.table_widget.setColumnCount(df.shape[1])
+
+        # Set the headers
+        self.table_widget.setHorizontalHeaderLabels(df.columns)
+
+        # Populate the table with the DataFrame data
+        for i in range(df.shape[0]):
+            for j in range(df.shape[1]):
+                item = QTableWidgetItem(str(df.iat[i, j]))
+                self.table_widget.setItem(i, j, item)
+
+        # Resize the columns to fit the contents
+        self.table_widget.resizeColumnsToContents()
+        
+        # Populate the X and Y axis combo boxes with column names in the third tab
+        self.x_axis_combo.clear()
+        self.y_axis_combo.clear()
+
+        for col in df.columns:
+            self.x_axis_combo.addItem(col)
+            self.y_axis_combo.addItem(col)
+
+    def save_dataframe(self):
+        """Open a file dialog to save the DataFrame."""
+        if not hasattr(self, 'df'):
+            QMessageBox.warning(self, "Error", "No DataFrame to save.")
+            return
+
+        # Open a file dialog to choose the save location
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getSaveFileName(self, "Save DataFrame", "", "CSV Files (*.csv);;All Files (*)", options=options)
+
+        if file_name:
+            try:
+                # Save the DataFrame as a CSV file
+                self.df.to_csv(file_name, index=False)
+                QMessageBox.information(self, "Success", f"DataFrame saved successfully to {file_name}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to save DataFrame: {str(e)}")
+
+    def copy_selected_data(self):
+        """
+        Copy selected cells from QTableWidget to clipboard.
+        """
+        selected_ranges = self.table_widget.selectedRanges()
+        if not selected_ranges:
+            QMessageBox.warning(self, "No Selection", "No cells are selected to copy.")
+            return
+
+        # Get the range of selected cells
+        clipboard_content = ""
+        for selected_range in selected_ranges:
+            rows = range(selected_range.topRow(), selected_range.bottomRow() + 1)
+            cols = range(selected_range.leftColumn(), selected_range.rightColumn() + 1)
+
+            for row in rows:
+                row_content = []
+                for col in cols:
+                    item = self.table_widget.item(row, col)
+                    if item:
+                        row_content.append(item.text())
+                clipboard_content += "\t".join(row_content) + "\n"
+
+        # Set clipboard content
+        clipboard = QApplication.clipboard()
+        clipboard.setText(clipboard_content)
+
+        QMessageBox.information(self, "Copied", "Selected data has been copied to the clipboard.")
+
+    def run_python_script(self, file_name):
+        """Execute the Python script corresponding to the file name and display the DataFrame output."""
+        try:
+            # Determine the absolute path to the 'scripts' subfolder
+            script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+            # Path to the Python script
+            script_path = os.path.join(script_dir, file_name)
+
+            # Check if the file exists
+            if not os.path.exists(script_path):
+                QMessageBox.critical(self, "Error", f"Script not found: {file_name}")
+                return
+
+            # Run the Python script as a subprocess
+            process = subprocess.Popen([sys.executable, script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
+
+            if process.returncode == 0:
+                # Capture DataFrame output (assuming the script outputs a DataFrame as CSV)
+                output = stdout.decode().strip()
+                try:
+                    df = pd.read_csv(StringIO(output))  # Read DataFrame from the script output
+                    self.display_dataframe(df)  # Display the DataFrame in the dashboard
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Failed to parse DataFrame output: {str(e)}")
+            else:
+                QMessageBox.critical(self, "Error", f"Script '{file_name}' failed to execute.\nError: {stderr.decode()}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")  
 
     def create_category_button(self, text, items, identifier):
         """
