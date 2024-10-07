@@ -268,7 +268,7 @@ def send_email(expiring_employees_str):
 
         mail.To = "alejandra.gamboa@absolutecaregivers.com; kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
         mail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com; thea.banks@absolutecaregivers.com"
-        mail.Subject = "Weekly Update: Expired or Expiring Drivers Licenses"
+        mail.Subject = "Weekly Update: South Bend Expired or Expiring Drivers Licenses"
 
         # Construct the signature path dynamically
         signature_filename = "Absolute Signature (seth.riley@absolutecaregivers.com).htm"
@@ -282,7 +282,7 @@ def send_email(expiring_employees_str):
             "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'>"  # Start of styled div
             "<p>Hi Alli,</p>"
             "<p>I hope this message finds you well.</p>"
-            "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the employee audit checklist with their new expirations.</p>"
+            "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the South Bend employee audit checklist with their new expirations.</p>"
             "<pre  style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
             f"{expiring_employees_str}"
             "</pre>"

@@ -243,7 +243,7 @@ def send_email(pending_admissions):
         outlook = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
         mail = outlook.CreateItem(0)  # 0: olMailItem
 
-        mail.To = "lyudmila.slepaya@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com; victoria.shmoel@absolutecaregivers.com"
+        mail.To = "lyudmila.slepaya@absolutecaregivers.com; mya.engelken@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com; victoria.shmoel@absolutecaregivers.com"
         mail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
         mail.Subject = "Pending IHCC Admissions"
 
