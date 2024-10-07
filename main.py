@@ -22,7 +22,9 @@ from PySide6.QtWidgets import (  # type: ignore
     QTableWidgetSelectionRange,
     QComboBox,
     QSpinBox,
-    QTableWidgetItem
+    QTableWidgetItem,
+    QKeySequenceEdit
+    
     
 )
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
@@ -155,6 +157,48 @@ class MplCanvas(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig, self.ax = plt.subplots(figsize=(width, height), dpi=dpi)
         super(MplCanvas, self).__init__(self.fig)
+
+class CustomTableWidget(QTableWidget):
+    """
+    Custom QTableWidget to handle Ctrl+C for copying selected data.
+    """
+    
+    def keyPressEvent(self, event):
+        """Handle key press events, including Ctrl+C."""
+        if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:  # Check for Ctrl+C
+            self.copy_selected_data()
+        else:
+            super().keyPressEvent(event)  # Pass event to the base class
+
+    def copy_selected_data(self):
+        """
+        Copy selected cells from QTableWidget to clipboard.
+        """
+        # Get the selected ranges from the QTableWidget itself
+        selected_ranges = self.selectedRanges()
+        if not selected_ranges:
+            QMessageBox.warning(self, "No Selection", "No cells are selected to copy.")
+            return
+
+        # Get the range of selected cells
+        clipboard_content = ""
+        for selected_range in selected_ranges:
+            rows = range(selected_range.topRow(), selected_range.bottomRow() + 1)
+            cols = range(selected_range.leftColumn(), selected_range.rightColumn() + 1)
+
+            for row in rows:
+                row_content = []
+                for col in cols:
+                    item = self.item(row, col)
+                    row_content.append(item.text() if item else '')  # Handle empty cells
+                clipboard_content += "\t".join(row_content) + "\n"
+
+        # Set clipboard content
+        clipboard = QApplication.clipboard()
+        clipboard.setText(clipboard_content.strip())  # Strip trailing newlines
+
+        QMessageBox.information(self, "Copied", "Selected data has been copied to the clipboard.")
+
 
 class MainApp(QWidget):
     def __init__(self):
@@ -392,23 +436,44 @@ class MainApp(QWidget):
         self.file_list_layout = QVBoxLayout()
         self.file_list_layout.setAlignment(Qt.AlignTop)
 
-        # Create a single file list as a scrollable area
-        self.file_list_scroll = self.create_scrollable_file_list([
-            "Admission_by_Month.py", 
-            "Patient_Data.py", 
-            "Report3.py",
-            "Report4.py", 
-            "Report5.py", 
-            "Report6.py"
-        ])
+        # Define custom labels for buttons and the corresponding programs/scripts to run
+        custom_programs = {
+            "Active Patients per Month": "Admission_by_Month.py",
+            "View Patient Data": "Patient_Data.py",
+            "Generate Report 3": "Report3.py",
+            "Generate Report 4": "Report4.py",
+            "Generate Report 5": "Report5.py",
+            "Run Custom Report 6": "Report6.py"
+        }
 
-        # Add scroll area to the middle layout
-        self.file_list_layout.addWidget(self.file_list_scroll)
+        # Container widget to hold the buttons
+        button_container = QWidget()
+        button_layout = QVBoxLayout(button_container)
 
+        # Create buttons with custom labels to run the corresponding programs
+        for button_label, program in custom_programs.items():
+            button = QPushButton(button_label)
+            button.clicked.connect(lambda checked, prog=program: self.run_python_script(prog))
+            button_layout.addWidget(button)
+
+        # Ensure the button container has the right size to show all buttons
+        button_container.setLayout(button_layout)
+        button_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        button_container.adjustSize()
+
+        # Scroll area to make the file list scrollable
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(button_container)
+
+        # Add scroll area to the file list layout
+        self.file_list_layout.addWidget(scroll_area)
+
+        # Add file list layout to the secondary layout
         self.secondary_layout.addLayout(self.file_list_layout)
 
         # Right-side layout for displaying the DataFrame (QTableWidget)
-        self.table_widget = QTableWidget()
+        self.table_widget = CustomTableWidget()
         self.table_widget.setColumnCount(0)
         self.table_widget.setRowCount(0)
         self.table_widget.setFixedHeight(400)  # Set a fixed height for the table
@@ -424,7 +489,7 @@ class MainApp(QWidget):
         self.save_dataframe_button.clicked.connect(self.save_dataframe)
 
         self.copy_selected_button = QPushButton("Copy Selected")
-        self.copy_selected_button.clicked.connect(self.copy_selected_data)
+        self.copy_selected_button.clicked.connect(self.table_widget.copy_selected_data)
 
         # Add the buttons to the secondary layout
         self.secondary_layout.addWidget(self.save_dataframe_button)
@@ -535,8 +600,6 @@ class MainApp(QWidget):
 
         # Show the data point value in a message box
         QMessageBox.information(self, "Data Point", f"X: {x_value}\nY: {y_value}")
-
-
         
     def create_scrollable_file_list(self, file_names):
         """Create a scrollable area containing buttons for the given file names."""
@@ -609,35 +672,6 @@ class MainApp(QWidget):
                 QMessageBox.information(self, "Success", f"DataFrame saved successfully to {file_name}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to save DataFrame: {str(e)}")
-
-    def copy_selected_data(self):
-        """
-        Copy selected cells from QTableWidget to clipboard.
-        """
-        selected_ranges = self.table_widget.selectedRanges()
-        if not selected_ranges:
-            QMessageBox.warning(self, "No Selection", "No cells are selected to copy.")
-            return
-
-        # Get the range of selected cells
-        clipboard_content = ""
-        for selected_range in selected_ranges:
-            rows = range(selected_range.topRow(), selected_range.bottomRow() + 1)
-            cols = range(selected_range.leftColumn(), selected_range.rightColumn() + 1)
-
-            for row in rows:
-                row_content = []
-                for col in cols:
-                    item = self.table_widget.item(row, col)
-                    if item:
-                        row_content.append(item.text())
-                clipboard_content += "\t".join(row_content) + "\n"
-
-        # Set clipboard content
-        clipboard = QApplication.clipboard()
-        clipboard.setText(clipboard_content)
-
-        QMessageBox.information(self, "Copied", "Selected data has been copied to the clipboard.")
 
     def run_python_script(self, file_name):
         """Execute the Python script corresponding to the file name and display the DataFrame output."""
