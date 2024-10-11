@@ -440,7 +440,7 @@ class MainApp(QWidget):
         custom_programs = {
             "Active Patients per Month": "Admission_by_Month.py",
             "View Patient Data": "Patient_Data.py",
-            "Generate Report 3": "Report3.py",
+            "Active Contractor per Month": "Caregiver_by_Month.py",
             "Generate Report 4": "Report4.py",
             "Generate Report 5": "Report5.py",
             "Run Custom Report 6": "Report6.py"
