@@ -628,7 +628,11 @@ class MainApp(QWidget):
         """
         Display a Pandas DataFrame in the QTableWidget on the dashboard.
         """
-        self.df = df  # Store the DataFrame for export
+        if df.empty:
+            QMessageBox.warning(self, "No Data", "The DataFrame is empty.")
+            return
+
+        self.df = df  # Store the DataFrame for future export
         self.table_widget.clear()
 
         # Set row and column count based on the DataFrame
@@ -646,7 +650,7 @@ class MainApp(QWidget):
 
         # Resize the columns to fit the contents
         self.table_widget.resizeColumnsToContents()
-        
+
         # Populate the X and Y axis combo boxes with column names in the third tab
         self.x_axis_combo.clear()
         self.y_axis_combo.clear()
@@ -690,19 +694,35 @@ class MainApp(QWidget):
             process = subprocess.Popen([sys.executable, script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
 
+            # Check if the process finished without errors
             if process.returncode == 0:
-                # Capture DataFrame output (assuming the script outputs a DataFrame as CSV)
+                # Capture stdout output from the process
                 output = stdout.decode().strip()
-                try:
-                    df = pd.read_csv(StringIO(output))  # Read DataFrame from the script output
-                    self.display_dataframe(df)  # Display the DataFrame in the dashboard
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"Failed to parse DataFrame output: {str(e)}")
-            else:
-                QMessageBox.critical(self, "Error", f"Script '{file_name}' failed to execute.\nError: {stderr.decode()}")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")  
 
+                # Log the raw output for debugging
+                print(f"Raw Output from {file_name}:\n{output}")
+
+                # Check if output contains valid CSV structure
+                if ',' in output and '\n' in output:
+                    try:
+                        # Try to parse the output as CSV into a DataFrame
+                        df = pd.read_csv(StringIO(output))  # Read DataFrame from the script output
+                        self.display_dataframe(df)  # Display the DataFrame in the dashboard
+                    except pd.errors.ParserError as pe:
+                        QMessageBox.critical(self, "Error", f"CSV Parsing error: {str(pe)}")
+                    except Exception as e:
+                        QMessageBox.critical(self, "Error", f"Failed to parse DataFrame output: {str(e)}")
+                else:
+                    QMessageBox.critical(self, "Error", f"Output from {file_name} is not in CSV format.")
+            else:
+                # If the process failed, show the error message
+                error_message = stderr.decode().strip()
+                print(f"Error Output from {file_name}:\n{error_message}")
+                QMessageBox.critical(self, "Error", f"Script '{file_name}' failed to execute.\nError: {error_message}")
+        except Exception as e:
+            # Handle any other unexpected exceptions
+            QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")
+  
     def create_category_button(self, text, items, identifier):
         """
         Create a category button that acts as a toggle.
