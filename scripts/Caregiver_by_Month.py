@@ -43,7 +43,7 @@ def main():
         df_active_patients_by_month = pd.DataFrame(active_patient_counts)
 
         # Print the result DataFrame for debugging
-        print(df_active_patients_by_month)
+        print(df_active_patients_by_month.to_csv(index=False))
 
     else:
         print("No data was returned by the extractor.")
