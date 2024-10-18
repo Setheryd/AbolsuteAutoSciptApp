@@ -1164,23 +1164,27 @@ class MainApp(QWidget):
             self.script_results[self.current_script_name] = 'failed'
             self.script_buttons[self.current_script_name].set_status('failed')
 
-        # Hide Execution Indicators
-        self.hide_execution_indicators()
+        # Reset Button Highlights
+        self.highlight_active_button(None)
 
-        # Reset Button Highlights and Re-enable Buttons
-        self.highlight_active_button(None)  # Reset all button highlights
-        self.set_buttons_enabled(True)      # Re-enable all script buttons
+        # Check if there are more scripts to run
+        if self.pending_scripts:
+            self.run_next_script()
+        else:
+            # All scripts have been executed
+            self.hide_execution_indicators()
+            self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
+            self.show_summary()
+
+        # Re-enable Buttons only if no more scripts are running
+        if not self.pending_scripts:
+            self.set_buttons_enabled(True)
 
         # Uncheck the previously selected button
         if self.selected_subcategory_button:
             self.selected_subcategory_button.setChecked(False)
             self.selected_subcategory_button = None
 
-        if self.pending_scripts:
-            self.run_next_script()
-        else:
-            self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
-            self.show_summary()
 
     def show_summary(self):
         """
