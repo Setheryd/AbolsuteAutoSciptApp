@@ -218,12 +218,12 @@ class MainApp(QWidget):
 
         # Dashboard Tab (if needed)
         self.secondary_tab = QWidget()
-        self.setup_secondary_tab()
+        self.dashboard_tab()
         self.tab_widget.addTab(self.secondary_tab, "Dashboard")
 
         # Graph Tab (if needed)
         self.graph_tab = QWidget()
-        self.setup_graph_tab()
+        self.graph_tab()
         self.tab_widget.addTab(self.graph_tab, "Graph")
 
         # Main layout to hold the QTabWidget
@@ -423,7 +423,7 @@ class MainApp(QWidget):
         self.timer.setInterval(60000)  # 45 seconds
         self.timer.timeout.connect(self.handle_timeout)
         
-    def setup_secondary_tab(self):
+    def dashboard_tab(self):
         """Set up the layout for the secondary tab."""
         self.secondary_layout = QVBoxLayout(self.secondary_tab)
 
@@ -502,7 +502,7 @@ class MainApp(QWidget):
         self.secondary_tab.setLayout(self.secondary_layout)
 
         
-    def setup_graph_tab(self):
+    def graph_tab(self):
         """Set up the layout for the graph tab."""
         self.graph_layout = QVBoxLayout(self.graph_tab)
 
