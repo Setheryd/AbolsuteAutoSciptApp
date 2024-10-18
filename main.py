@@ -222,9 +222,9 @@ class MainApp(QWidget):
         self.tab_widget.addTab(self.secondary_tab, "Dashboard")
 
         # Graph Tab (if needed)
-        self.graph_tab = QWidget()
+        self.graph_tab_widget = QWidget()
         self.graph_tab()
-        self.tab_widget.addTab(self.graph_tab, "Graph")
+        self.tab_widget.addTab(self.graph_tab_widget, "Graph")
 
         # Main layout to hold the QTabWidget
         main_layout = QVBoxLayout(self)
@@ -504,7 +504,7 @@ class MainApp(QWidget):
         
     def graph_tab(self):
         """Set up the layout for the graph tab."""
-        self.graph_layout = QVBoxLayout(self.graph_tab)
+        self.graph_layout = QVBoxLayout(self.graph_tab_widget) 
 
         # Create dropdowns for X-axis and Y-axis selection
         self.x_axis_combo = QComboBox(self)
@@ -542,7 +542,8 @@ class MainApp(QWidget):
         # Initialize an empty Axes
         self.canvas.ax = self.canvas.figure.add_subplot(111)
 
-        self.graph_tab.setLayout(self.graph_layout)
+        self.graph_tab_widget.setLayout(self.graph_layout)
+
     
     def plot_graph(self):
         """Plot the graph with the selected X and Y axis, and enable click to show data values."""
