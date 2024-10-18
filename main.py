@@ -296,15 +296,54 @@ class MainApp(QWidget):
         """
         Initializes and sets up all UI components.
         """
+        # Define the custom style sheet for tabs
+        tab_style = """
+            QTabWidget::pane {
+                border: none;
+                background-color: #2e2e2e;
+            }
+
+            QTabBar::tab {
+                background: #3c3c3c;
+                color: white;
+                padding: 10px 20px;
+                border: 1px solid #444;
+                border-bottom: none;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+                margin-right: 2px;
+                font-family: "Segoe UI", sans-serif;
+                font-size: 14px;
+            }
+
+            QTabBar::tab:hover {
+                background: #505050;
+            }
+
+            QTabBar::tab:selected {
+                background: #A0C4FF; /* Same as the header color */
+                font-weight: bold;
+                color: #d9e6f2; /* Slightly darkened text color */
+                color: white;
+                margin-top: 0px;
+            }
+
+            QTabBar::tab:!selected {
+                margin-top: 2px;
+            }
+            """
+
         # Create a QTabWidget for switching between tabs
         self.tab_widget = QTabWidget(self)
+
+        # Apply the custom style sheet to the QTabWidget
+        self.tab_widget.setStyleSheet(tab_style)
 
         # Setup Individual Tabs
         self.setup_scripts_tab()
         self.setup_dashboard_tab()
         self.setup_graph_tab()
 
-        # Main Layout to Hold the QTabWidget
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(self.tab_widget)
         self.setLayout(main_layout)
@@ -1184,7 +1223,6 @@ class MainApp(QWidget):
         if self.selected_subcategory_button:
             self.selected_subcategory_button.setChecked(False)
             self.selected_subcategory_button = None
-
 
     def show_summary(self):
         """
