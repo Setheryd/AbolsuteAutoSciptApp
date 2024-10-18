@@ -725,47 +725,18 @@ class MainApp(QWidget):
             QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")
   
     def create_category_button(self, text, items, identifier):
-        """
-        Create a category button that acts as a toggle.
-
-        Args:
-            text (str): The display text of the button.
-            items (list): The list of sub-category items associated with this category.
-            identifier (str): A unique identifier for the button (used as objectName).
-
-        Returns:
-            QPushButton: The configured category button.
-        """
         button = QPushButton(text, self)
         button.setFixedWidth(300)  # Set a fixed width for all category buttons
         button.setCheckable(True)  # Make the button checkable
         button.clicked.connect(lambda: self.toggle_category(text, items))
         button.setObjectName(identifier)  # Assign a unique object name
-
-        # Enhance button appearance with border-radius and black text
-        button.setStyleSheet("""
-            QPushButton {
-                background-color: #f0f0f0;
-                border: 2px solid #cccccc;
-                border-radius: 10px;
-                padding: 10px;
-                text-align: center;  /* Center text horizontally */
-                color: black;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #dcdcdc;
-            }
-            QPushButton:checked {
-                background-color: #a0c4ff;
-                border: 2px solid #89a4ff;
-                color: black;
-            }
-        """)
-
+        
+        # Remove the individual style sheet
+        # button.setStyleSheet("""...""")
+        
         # Set size policy to prevent vertical stretching
         button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
+        
         return button
 
     def toggle_category(self, category, items):
