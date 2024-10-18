@@ -682,7 +682,7 @@ class MainApp(QWidget):
         """Execute the Python script corresponding to the file name and display the DataFrame output."""
         try:
             # Determine the absolute path to the 'scripts' subfolder
-            script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+            script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_extraction")
             # Path to the Python script
             script_path = os.path.join(script_dir, file_name)
 
