@@ -183,6 +183,7 @@ if __name__ == "__main__":
     extractor = PatientDataExtractor()
     df = extractor.extract_eligible_patients()
     if df is not None:
-        print(df)
+        # Output DataFrame in CSV format without index
+        print(df.to_csv(index=False))
     else:
         print("No eligible patient data was extracted.")
