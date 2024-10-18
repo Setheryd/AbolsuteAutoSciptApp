@@ -6,7 +6,7 @@ def main():
     extractor = PatientDataExtractor()
     
     # Extract the DataFrame without exporting to CSV
-    df = extractor.extract_eligible_patients(output_to_csv=False)  # Ensure it doesn't output directly to stdout
+    df = extractor.extract_eligible_patients()  # Ensure it doesn't output directly to stdout
 
     if df is not None:
         # Convert 'First NOA Date' and 'Discharge Date' to datetime for proper handling
