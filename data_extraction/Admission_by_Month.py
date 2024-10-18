@@ -29,7 +29,7 @@ def main():
                 (df['First NOA Date'] <= month) &
                 ((df['Discharge Date'].isna()) | (df['Discharge Date'] >= month))
             ]
-            active_patient_counts.append({'Month-Year': month.strftime('%B/%Y'), 'Active Patients': len(active_patients)})
+            active_patient_counts.append({'Month-Year': month.strftime('%B-%Y'), 'Active Patients': len(active_patients)})
 
         # Convert the list of results into a DataFrame
         df_active_patients_by_month = pd.DataFrame(active_patient_counts)
