@@ -91,7 +91,7 @@ class CaregiverDataExtractor:
                         ws = wb.Sheets("Contractor_Employee")
                         used_range = ws.UsedRange
                         data = used_range.Value  # Read all data at once
-                        print(f"Used range data: {data}")  # Debugging print
+                        # print(f"Used range data: {data}")  # Debugging print
 
                         if not data:
                             logging.warning(f"No data found in 'Contractor_Employee' sheet in '{filename}'")
@@ -104,13 +104,13 @@ class CaregiverDataExtractor:
 
                     # Extract data from columns C, H, J
                     for row in data[2:]:  # Skip header row
-                        print(f"Row data: {row}")  # Debugging print
+                        # print(f"Row data: {row}")  # Debugging print
                         contractor_name = row[2] if len(row) >= 3 else None  # Column C (3rd)
                         date_of_hire = row[7] if len(row) >= 8 else None  # Column H (8th)
                         term_date = row[9] if len(row) >= 10 else None  # Column J (10th)
 
                         # Debugging prints
-                        print(f"Contractor Name: {contractor_name}, Date of Hire: {date_of_hire}, Term Date: {term_date}")
+                        # print(f"Contractor Name: {contractor_name}, Date of Hire: {date_of_hire}, Term Date: {term_date}")
 
                         if contractor_name:
                             collected_data.append({
@@ -132,13 +132,25 @@ class CaregiverDataExtractor:
                 df = pd.DataFrame(collected_data)
                 logging.info("DataFrame created successfully.")
                 
-                # Convert 'First NOA Date' and 'Discharge Date' to datetime, handling invalid entries with 'coerce'
-                df["Date of Hire (H)"] = pd.to_datetime(df["Date of Hire (H)"], errors='coerce')
-                df["Term Date (J)"] = pd.to_datetime(df["Term Date (J)"], errors='coerce')
+                # Convert date columns to strings in 'YYYY-MM-DD' format
+                def format_date(date_obj):
+                    if isinstance(date_obj, datetime):
+                        return date_obj.strftime('%Y-%m-%d')
+                    elif isinstance(date_obj, str):
+                        try:
+                            # Attempt to parse the string to a datetime object
+                            parsed_date = pd.to_datetime(date_obj, errors='coerce')
+                            if pd.notnull(parsed_date):
+                                return parsed_date.strftime('%Y-%m-%d')
+                            else:
+                                return date_obj  # Return as is if parsing fails
+                        except Exception:
+                            return date_obj  # Return as is if any exception occurs
+                    else:
+                        return date_obj  # Return as is for other types
 
-                # Format the dates to 'mm/dd/yyyy'
-                df["Date of Hire (H)"] = df["Date of Hire (H)"].dt.strftime('%m/%d/%Y')
-                df["Term Date (J)"] = df["Term Date (J)"].dt.strftime('%m/%d/%Y')
+                df["Date of Hire (H)"] = df["Date of Hire (H)"].apply(format_date)
+                df["Term Date (J)"] = df["Term Date (J)"].apply(format_date)
                 
                 if output_to_csv:
                     if output_file:
@@ -155,6 +167,14 @@ class CaregiverDataExtractor:
                 return None
 
         except Exception as e:
-            logging.error(f"Error in extract_eligible_patients: {e}")
+            logging.error(f"Error in caregiver_data_extractor: {e}")
             print(f"Error: {e}")  # Debugging print
             return None
+        
+if __name__ == "__main__":
+    extractor = CaregiverDataExtractor()
+    df = extractor.extract_caregivers()
+    if df is not None:
+        print(df)
+    else:
+        print("No eligible patient data was extracted.")
