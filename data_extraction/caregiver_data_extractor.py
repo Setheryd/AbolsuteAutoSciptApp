@@ -74,13 +74,13 @@ class CaregiverDataExtractor:
                         print(f"File not found: {filename}")  # Debugging print
                         continue
                     else:
-                        print(f"File found: {file_path}")  # Debugging print
+                        # print(f"File found: {file_path}")  # Debugging print
                         logging.info(f"File found: {file_path}")
 
                     # Open the workbook and list sheets
                     try:
                         wb = excel.Workbooks.Open(file_path, False, True, None, self.password, '', True)
-                        print([sheet.Name for sheet in wb.Sheets])  # Debugging print: check available sheets
+                        # print([sheet.Name for sheet in wb.Sheets])  # Debugging print: check available sheets
                     except Exception as e:
                         logging.error(f"Error opening file {file_path}: {e}")
                         print(f"Error opening file {file_path}: {e}")  # Debugging print
