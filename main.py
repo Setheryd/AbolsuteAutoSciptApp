@@ -23,12 +23,12 @@ from PySide6.QtWidgets import (  # type: ignore
     QComboBox,
     QSpinBox,
     QTableWidgetItem,
-    QKeySequenceEdit
-    
-    
+    QKeySequenceEdit,
+    QSplitter,
 )
+
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
-from PySide6.QtGui import QMovie, QIcon, QPixmap, QPainter, QColor  # type: ignore
+from PySide6.QtGui import QMovie, QIcon, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
 import pandas as pd
 from io import StringIO
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -152,7 +152,7 @@ class ScriptButtonWidget(QWidget):
     def set_status(self, status):
         self.status = status
         self.update_status_icon()
-        
+
 class MplCanvas(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig, self.ax = plt.subplots(figsize=(width, height), dpi=dpi)
@@ -206,7 +206,15 @@ class MainApp(QWidget):
 
         # Set up the window properties
         self.setWindowTitle("Absolute Caregivers Auto Scripting App")
-        self.setGeometry(100, 100, 600, 600)  # Increased size for better layout
+        # Get the available screen geometry, excluding taskbars or docks
+        screen = QGuiApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+
+        # Set window size to slightly less than the available screen size to fit properly
+        # Subtract a few pixels (like 10-15) to make sure everything fits on screen
+        self.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height() - 20)
+
+
 
         # Create a QTabWidget for switching between tabs
         self.tab_widget = QTabWidget(self)
@@ -427,12 +435,10 @@ class MainApp(QWidget):
         """Set up the layout for the secondary tab."""
         self.secondary_layout = QVBoxLayout(self.secondary_tab)
 
-        # Left-side layout for file list buttons (Removed as no longer needed)
-        # If you still want to keep any buttons on the left, you can repurpose this layout.
-        # Otherwise, it can be removed entirely.
-        # For this example, we'll remove it.
+        # QSplitter for resizable columns
+        splitter = QSplitter(Qt.Horizontal)
 
-        # Middle layout for the file list and table
+        # Left-side layout for the custom program buttons
         self.file_list_layout = QVBoxLayout()
         self.file_list_layout.setAlignment(Qt.AlignTop)
 
@@ -461,28 +467,43 @@ class MainApp(QWidget):
         button_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         button_container.adjustSize()
 
-        # Scroll area to make the file list scrollable
+        # Scroll area to make the button list scrollable
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(button_container)
 
-        # Add scroll area to the file list layout
-        self.file_list_layout.addWidget(scroll_area)
+        # Create a widget for the left-side content (buttons)
+        left_widget = QWidget()
+        left_widget.setLayout(QVBoxLayout())
+        left_widget.layout().addWidget(scroll_area)
 
-        # Add file list layout to the secondary layout
-        self.secondary_layout.addLayout(self.file_list_layout)
+        # Add the left widget to the splitter
+        splitter.addWidget(left_widget)
 
         # Right-side layout for displaying the DataFrame (QTableWidget)
         self.table_widget = CustomTableWidget()
         self.table_widget.setColumnCount(0)
         self.table_widget.setRowCount(0)
-        self.table_widget.setFixedHeight(400)  # Set a fixed height for the table
         self.table_widget.setStyleSheet("""
             QTableWidget {
                 background-color: #f0f0f0;
                 color: black;
             }
         """)
+
+        # Add the table widget to the splitter
+        splitter.addWidget(self.table_widget)
+
+        # Set initial sizes for the splitter (left size for buttons, right size for table)
+        splitter.setSizes([300, 700])  # Adjust these values as necessary
+
+        # Add the splitter to the secondary layout and give it a stretch factor
+        self.secondary_layout.addWidget(splitter)
+        self.secondary_layout.setStretch(0, 1)  # Make sure the splitter takes up most space
+
+        # Horizontal layout for the bottom buttons (Save DataFrame, Copy Selected)
+        bottom_buttons_layout = QHBoxLayout()
+        bottom_buttons_layout.setAlignment(Qt.AlignCenter)
 
         # Buttons for saving and copying DataFrame
         self.save_dataframe_button = QPushButton("Save DataFrame")
@@ -491,15 +512,18 @@ class MainApp(QWidget):
         self.copy_selected_button = QPushButton("Copy Selected")
         self.copy_selected_button.clicked.connect(self.table_widget.copy_selected_data)
 
-        # Add the buttons to the secondary layout
-        self.secondary_layout.addWidget(self.save_dataframe_button)
-        self.secondary_layout.addWidget(self.copy_selected_button)
+        # Add the buttons to the bottom button layout
+        bottom_buttons_layout.addWidget(self.save_dataframe_button)
+        bottom_buttons_layout.addWidget(self.copy_selected_button)
 
-        # Add the table widget to the secondary layout
-        self.secondary_layout.addWidget(self.table_widget)
+        # Add the bottom buttons layout to the secondary layout
+        self.secondary_layout.addLayout(bottom_buttons_layout)
 
         # Set the layout to the secondary tab
         self.secondary_tab.setLayout(self.secondary_layout)
+
+
+
 
         
     def graph_tab(self):
