@@ -375,16 +375,24 @@ class MainApp(QWidget):
         self.button_container = QWidget()
         self.button_layout = QVBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
+
         self.button_layout.setSpacing(10)
         self.button_layout.setAlignment(Qt.AlignTop)
+
         self.button_container.setLayout(self.button_layout)
+        self.button_container.setStyleSheet("background-color: transparent;")
 
         # Scroll Area for Sub-Category Buttons
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.scroll_area.setWidget(self.button_container)
+        self.scroll_area.setStyleSheet("background-color: transparent;")
         self.scroll_area.setMinimumWidth(350)
-        self.script_layout.addWidget(self.scroll_area)
+
+        # Transparent background for scroll area
+
+        self.script_layout.addWidget(self.scroll_area, alignment=Qt.AlignHCenter)
 
         # Add Scripts Layout to Main Scripts Layout
         scripts_layout.addLayout(self.script_layout)
@@ -1159,12 +1167,20 @@ class MainApp(QWidget):
         # Hide Execution Indicators
         self.hide_execution_indicators()
 
+        # Reset Button Highlights and Re-enable Buttons
+        self.highlight_active_button(None)  # Reset all button highlights
+        self.set_buttons_enabled(True)      # Re-enable all script buttons
+
+        # Uncheck the previously selected button
+        if self.selected_subcategory_button:
+            self.selected_subcategory_button.setChecked(False)
+            self.selected_subcategory_button = None
+
         if self.pending_scripts:
             self.run_next_script()
         else:
             self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
-            if self.pending_scripts is not None:
-                self.show_summary()
+            self.show_summary()
 
     def show_summary(self):
         """
@@ -1353,47 +1369,68 @@ class MainApp(QWidget):
     def highlight_active_button(self, script_name):
         """
         Highlights the active script button and resets others.
-
-        Args:
-            script_name (str): The name of the active script.
+        If script_name is None, reset all buttons.
         """
         for item in self.script_buttons:
             widget = self.script_buttons[item]
-            widget.button.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffffff;
-                    border: 1px solid #cccccc;
-                    border-radius: 8px;
-                    padding: 10px;
-                    text-align: center;
-                    color: black;
-                }
-                QPushButton:hover {
-                    background-color: #e6e6e6;
-                }
-                QPushButton:checked {
-                    background-color: #a0c4ff;
-                    border: 1px solid #89a4ff;
-                    color: black;
-                }
-            """)
-
-        # Highlight Active Button
-        widget = self.script_buttons.get(script_name)
-        if widget:
-            widget.button.setStyleSheet("""
-                QPushButton {
-                    background-color: #A0C4FF;
-                    border: 1px solid #cccccc;
-                    border-radius: 8px;
-                    padding: 10px;
-                    text-align: center;
-                    color: black;
-                }
-                QPushButton:hover {
-                    background-color: #89a4ff;
-                }
-            """)
+            if script_name is None:
+                # Reset to default style and uncheck the button
+                widget.button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #ffffff;
+                        border: 1px solid #cccccc;
+                        border-radius: 8px;
+                        padding: 10px;
+                        text-align: center;
+                        color: black;
+                    }
+                    QPushButton:hover {
+                        background-color: #e6e6e6;
+                    }
+                    QPushButton:checked {
+                        background-color: #a0c4ff;
+                        border: 1px solid #89a4ff;
+                        color: black;
+                    }
+                """)
+                widget.button.setChecked(False)
+            elif item == script_name:
+                # Highlight the active button
+                widget.button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #A0C4FF;
+                        border: 1px solid #cccccc;
+                        border-radius: 8px;
+                        padding: 10px;
+                        text-align: center;
+                        color: black;
+                    }
+                    QPushButton:hover {
+                        background-color: #89a4FF;
+                    }
+                """)
+                widget.button.setChecked(True)
+            else:
+                # Reset other buttons to default style
+                widget.button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #ffffff;
+                        border: 1px solid #cccccc;
+                        border-radius: 8px;
+                        padding: 10px;
+                        text-align: center;
+                        color: black;
+                    }
+                    QPushButton:hover {
+                        background-color: #e6e6e6;
+                    }
+                    QPushButton:checked {
+                        background-color: #a0c4ff;
+                        border: 1px solid #89a4ff;
+                        color: black;
+                    }
+                """)
+                widget.button.setChecked(False)
 
     def update_category_styles(self):
         """
