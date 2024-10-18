@@ -14,7 +14,7 @@ logging.basicConfig(
 
 class CaregiverDataExtractor:
     def __init__(self, base_path=None, password="abs$1004$N"):
-        self.base_path = base_path or f"C:\\Users\\{os.getlogin()}\\OneDrive - Ability Home Health, LLC\\Absolute Operation\\"
+        self.base_path = base_path or f"C:\\Users\\{os.getlogin()}\\OneDrive - Ability Home Health, LLC\\"
         self.password = password
         self.files_info = {
             "Absolute Employee Demographics.xlsm": "Employee Demographics File",
