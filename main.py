@@ -702,6 +702,7 @@ class MainApp(QWidget):
             "Active Patients per Month": "Admission_by_Month.py",
             "View Patient Data": "Patient_Data.py",
             "Active Contractor per Month": "Caregiver_by_Month.py",
+            "View Contractor Data": "caregiver_data_extractor.py",
             "Generate Report 4": "Report4.py",
             "Generate Report 5": "Report5.py",
             "Run Custom Report 6": "Report6.py"

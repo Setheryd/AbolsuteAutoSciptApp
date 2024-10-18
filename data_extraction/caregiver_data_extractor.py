@@ -160,6 +160,7 @@ if __name__ == "__main__":
     extractor = CaregiverDataExtractor()
     df = extractor.extract_caregivers()
     if df is not None:
-        print(df)
+        # Output DataFrame in CSV format without index
+        print(df.to_csv(index=False))
     else:
         print("No eligible patient data was extracted.")
