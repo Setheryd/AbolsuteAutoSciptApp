@@ -30,17 +30,15 @@ def main():
                 ((df['Discharge Date'].isna()) | (df['Discharge Date'] >= month))
             ]
             active_patient_counts.append({
-                'Month': month.strftime('%B %Y'),
+                'Month/Year': month.strftime('%B %Y'),
                 'Active Patients': len(active_patients)
             })
 
         # Convert the list of results into a DataFrame
         df_active_patients_by_month = pd.DataFrame(active_patient_counts)
 
-        # At this point, df_active_patients_by_month contains the desired data
-        # You can return it, pass it to another function, or perform further processing
-        # For demonstration, we'll print the DataFrame
-        print(df_active_patients_by_month)
+        # Print the DataFrame without the index and without summary information
+        print(df_active_patients_by_month.to_string(index=False))
 
     else:
         sys.exit(1)  # Exit with error code if no data

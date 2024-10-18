@@ -419,7 +419,7 @@ class MainApp(QWidget):
         self.button_layout.setAlignment(Qt.AlignTop)
 
         self.button_container.setLayout(self.button_layout)
-        self.button_container.setStyleSheet("background-color: transparent;")
+        self.button_container.setStyleSheet("background-color: grey;")
 
         # Scroll Area for Sub-Category Buttons
         self.scroll_area = QScrollArea()
@@ -1542,34 +1542,44 @@ class MainApp(QWidget):
             file_name (str): The name of the script file to execute.
         """
         try:
+            # Construct the full path to the script
             script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_extraction")
             script_path = os.path.join(script_dir, file_name)
 
+            # Check if the script exists
             if not os.path.exists(script_path):
                 QMessageBox.critical(self, "Error", f"Script not found: {file_name}")
                 return
 
-            process = subprocess.Popen([sys.executable, script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # Execute the script
+            process = subprocess.Popen(
+                [sys.executable, script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True  # Ensures the output is returned as a string
+            )
             stdout, stderr = process.communicate()
 
             if process.returncode == 0:
-                output = stdout.decode().strip()
+                output = stdout.strip()
                 print(f"Raw Output from {file_name}:\n{output}")
 
-                if ',' in output and '\n' in output:
-                    try:
-                        df = pd.read_csv(StringIO(output))
-                        self.display_dataframe(df)
-                    except pd.errors.ParserError as pe:
-                        QMessageBox.critical(self, "Error", f"CSV Parsing error: {str(pe)}")
-                    except Exception as e:
-                        QMessageBox.critical(self, "Error", f"Failed to parse DataFrame output: {str(e)}")
-                else:
-                    QMessageBox.critical(self, "Error", f"Output from {file_name} is not in CSV format.")
+                try:
+                    # Attempt to parse the output as a fixed-width formatted DataFrame
+                    df = pd.read_fwf(StringIO(output))
+                    self.display_dataframe(df)
+                except pd.errors.ParserError as pe:
+                    QMessageBox.critical(self, "Error", f"DataFrame Parsing error: {str(pe)}")
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Failed to parse DataFrame output: {str(e)}")
             else:
-                error_message = stderr.decode().strip()
+                error_message = stderr.strip()
                 print(f"Error Output from {file_name}:\n{error_message}")
-                QMessageBox.critical(self, "Error", f"Script '{file_name}' failed to execute.\nError: {error_message}")
+                QMessageBox.critical(
+                    self, 
+                    "Error", 
+                    f"Script '{file_name}' failed to execute.\nError: {error_message}"
+                )
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")
