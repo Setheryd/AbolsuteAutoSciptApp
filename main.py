@@ -1296,6 +1296,30 @@ class MainApp(QWidget):
 # Main entry point
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    
+    # Apply the global button style
+    button_style = """
+    QPushButton {
+        background-color: #ffffff;
+        border: 2px solid #cccccc;
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+        color: black;
+        font-weight: bold;
+        font-size: 14px;  /* Adjust as needed */
+    }
+    QPushButton:hover {
+        background-color: #dcdcdc;
+    }
+    QPushButton:checked {
+        background-color: #a0c4ff;
+        border: 2px solid #89a4ff;
+        color: black;
+    }
+    """
+    app.setStyleSheet(button_style)
+    
     window = MainApp()
     window.show()
     sys.exit(app.exec())
