@@ -29,13 +29,18 @@ def main():
                 (df['First NOA Date'] <= month) &
                 ((df['Discharge Date'].isna()) | (df['Discharge Date'] >= month))
             ]
-            active_patient_counts.append({'Month': month.strftime('%B %Y'), 'Active Patients': len(active_patients)})
+            active_patient_counts.append({
+                'Month': month.strftime('%B %Y'),
+                'Active Patients': len(active_patients)
+            })
 
         # Convert the list of results into a DataFrame
         df_active_patients_by_month = pd.DataFrame(active_patient_counts)
 
-        # Output the DataFrame to stdout
-        print(df_active_patients_by_month.to_csv(index=False))
+        # At this point, df_active_patients_by_month contains the desired data
+        # You can return it, pass it to another function, or perform further processing
+        # For demonstration, we'll print the DataFrame
+        print(df_active_patients_by_month)
 
     else:
         sys.exit(1)  # Exit with error code if no data
