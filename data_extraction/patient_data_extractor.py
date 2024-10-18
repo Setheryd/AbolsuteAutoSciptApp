@@ -201,3 +201,7 @@ class PatientDataExtractor:
         except Exception as e:
             logging.error(f"Error in extract_eligible_patients: {e}")
             return None
+
+if __name__ == "__main__":
+    extractor = PatientDataExtractor()
+    df = extractor.extract_eligible_patients(output_to_csv=True)
