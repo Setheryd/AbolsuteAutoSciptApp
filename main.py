@@ -427,12 +427,10 @@ class MainApp(QWidget):
         """Set up the layout for the secondary tab."""
         self.secondary_layout = QVBoxLayout(self.secondary_tab)
 
-        # Left-side layout for file list buttons (Removed as no longer needed)
-        # If you still want to keep any buttons on the left, you can repurpose this layout.
-        # Otherwise, it can be removed entirely.
-        # For this example, we'll remove it.
+        # Main horizontal layout to split left (buttons) and right (table)
+        main_layout = QHBoxLayout()
 
-        # Middle layout for the file list and table
+        # Left-side layout for the custom program buttons
         self.file_list_layout = QVBoxLayout()
         self.file_list_layout.setAlignment(Qt.AlignTop)
 
@@ -461,7 +459,7 @@ class MainApp(QWidget):
         button_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         button_container.adjustSize()
 
-        # Scroll area to make the file list scrollable
+        # Scroll area to make the button list scrollable
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(button_container)
@@ -469,20 +467,29 @@ class MainApp(QWidget):
         # Add scroll area to the file list layout
         self.file_list_layout.addWidget(scroll_area)
 
-        # Add file list layout to the secondary layout
-        self.secondary_layout.addLayout(self.file_list_layout)
+        # Add the file list layout (left side) to the main layout
+        main_layout.addLayout(self.file_list_layout, 2)  # Add some stretch factor (1) to keep the column narrow
 
         # Right-side layout for displaying the DataFrame (QTableWidget)
         self.table_widget = CustomTableWidget()
         self.table_widget.setColumnCount(0)
         self.table_widget.setRowCount(0)
-        self.table_widget.setFixedHeight(400)  # Set a fixed height for the table
         self.table_widget.setStyleSheet("""
             QTableWidget {
                 background-color: #f0f0f0;
                 color: black;
             }
         """)
+
+        # Add the table widget to the right side of the main layout
+        main_layout.addWidget(self.table_widget, 4)  # Add a higher stretch factor to make it fill the rest of the space
+
+        # Add the main horizontal layout (buttons + table) to the secondary layout
+        self.secondary_layout.addLayout(main_layout)
+
+        # Horizontal layout for the bottom buttons (Save DataFrame, Copy Selected)
+        bottom_buttons_layout = QHBoxLayout()
+        bottom_buttons_layout.setAlignment(Qt.AlignCenter)
 
         # Buttons for saving and copying DataFrame
         self.save_dataframe_button = QPushButton("Save DataFrame")
@@ -491,15 +498,16 @@ class MainApp(QWidget):
         self.copy_selected_button = QPushButton("Copy Selected")
         self.copy_selected_button.clicked.connect(self.table_widget.copy_selected_data)
 
-        # Add the buttons to the secondary layout
-        self.secondary_layout.addWidget(self.save_dataframe_button)
-        self.secondary_layout.addWidget(self.copy_selected_button)
+        # Add the buttons to the bottom button layout
+        bottom_buttons_layout.addWidget(self.save_dataframe_button)
+        bottom_buttons_layout.addWidget(self.copy_selected_button)
 
-        # Add the table widget to the secondary layout
-        self.secondary_layout.addWidget(self.table_widget)
+        # Add the bottom buttons layout to the secondary layout
+        self.secondary_layout.addLayout(bottom_buttons_layout)
 
         # Set the layout to the secondary tab
         self.secondary_tab.setLayout(self.secondary_layout)
+
 
         
     def graph_tab(self):
