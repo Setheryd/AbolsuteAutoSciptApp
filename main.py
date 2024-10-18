@@ -26,14 +26,13 @@ from PySide6.QtWidgets import (  # type: ignore
     QKeySequenceEdit,
     QSplitter,
 )
-
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
 from PySide6.QtGui import QMovie, QIcon, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
 import pandas as pd
 from io import StringIO
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import mplcursors # type: ignore
+import mplcursors  # type: ignore
 import matplotlib.pyplot as plt
 
 # Categorized items (already sorted alphabetically)
@@ -153,16 +152,18 @@ class ScriptButtonWidget(QWidget):
         self.status = status
         self.update_status_icon()
 
+
 class MplCanvas(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig, self.ax = plt.subplots(figsize=(width, height), dpi=dpi)
         super(MplCanvas, self).__init__(self.fig)
 
+
 class CustomTableWidget(QTableWidget):
     """
     Custom QTableWidget to handle Ctrl+C for copying selected data.
     """
-    
+
     def keyPressEvent(self, event):
         """Handle key press events, including Ctrl+C."""
         if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:  # Check for Ctrl+C
@@ -214,8 +215,6 @@ class MainApp(QWidget):
         # Subtract a few pixels (like 10-15) to make sure everything fits on screen
         self.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height() - 20)
 
-
-
         # Create a QTabWidget for switching between tabs
         self.tab_widget = QTabWidget(self)
 
@@ -224,12 +223,12 @@ class MainApp(QWidget):
         self.setup_scripts_tab()
         self.tab_widget.addTab(self.scripts_tab, "Scripts")
 
-        # Dashboard Tab (if needed)
+        # Dashboard Tab
         self.secondary_tab = QWidget()
         self.dashboard_tab()
         self.tab_widget.addTab(self.secondary_tab, "Dashboard")
 
-        # Graph Tab (if needed)
+        # Graph Tab
         self.graph_tab_widget = QWidget()
         self.graph_tab()
         self.tab_widget.addTab(self.graph_tab_widget, "Graph")
@@ -240,7 +239,7 @@ class MainApp(QWidget):
         self.setLayout(main_layout)
 
         # Initialize script mapping and other necessary variables
-        #self.initialize_script_mapping()
+        # self.initialize_script_mapping()
 
         # Initialize QProcess
         self.process = None
@@ -428,9 +427,9 @@ class MainApp(QWidget):
 
         # Timer for timeout
         self.timer = QTimer(self)
-        self.timer.setInterval(60000)  # 45 seconds
+        self.timer.setInterval(60000)  # 60 seconds
         self.timer.timeout.connect(self.handle_timeout)
-        
+
     def dashboard_tab(self):
         """Set up the layout for the secondary tab."""
         self.secondary_layout = QVBoxLayout(self.secondary_tab)
@@ -522,55 +521,144 @@ class MainApp(QWidget):
         # Set the layout to the secondary tab
         self.secondary_tab.setLayout(self.secondary_layout)
 
-
-
-
-        
     def graph_tab(self):
         """Set up the layout for the graph tab."""
-        self.graph_layout = QVBoxLayout(self.graph_tab_widget) 
+        self.graph_layout = QHBoxLayout(self.graph_tab_widget)  # Use horizontal layout for main sections
 
-        # Create dropdowns for X-axis and Y-axis selection
-        self.x_axis_combo = QComboBox(self)
-        self.y_axis_combo = QComboBox(self)
+        # Left-side layout for controls
+        controls_layout = QVBoxLayout()
+        controls_layout.setContentsMargins(20, 20, 20, 20)
+        controls_layout.setSpacing(15)
 
-        # Add a label for X-axis
+        # X-axis selection
         self.x_axis_label = QLabel("Select X-axis:")
-        self.graph_layout.addWidget(self.x_axis_label)
-        self.graph_layout.addWidget(self.x_axis_combo)
+        self.x_axis_label.setStyleSheet("""
+            QLabel {
+                font-size: 14pt;
+                font-weight: bold;
+                color: #A0C4FF;
+            }
+        """)
+        self.x_axis_combo = QComboBox(self)
+        self.x_axis_combo.setStyleSheet("""
+            QComboBox {
+                padding: 5px;
+                font-size: 12pt;
+            }
+        """)
+        controls_layout.addWidget(self.x_axis_label)
+        controls_layout.addWidget(self.x_axis_combo)
 
-        # Add a label for Y-axis
+        # Y-axis selection
         self.y_axis_label = QLabel("Select Y-axis:")
-        self.graph_layout.addWidget(self.y_axis_label)
-        self.graph_layout.addWidget(self.y_axis_combo)
+        self.y_axis_label.setStyleSheet("""
+            QLabel {
+                font-size: 14pt;
+                font-weight: bold;
+                color: #A0C4FF;
+            }
+        """)
+        self.y_axis_combo = QComboBox(self)
+        self.y_axis_combo.setStyleSheet("""
+            QComboBox {
+                padding: 5px;
+                font-size: 12pt;
+            }
+        """)
+        controls_layout.addWidget(self.y_axis_label)
+        controls_layout.addWidget(self.y_axis_combo)
 
-        # Add a spinbox to control the number of labels on the X-axis
+        # Label spinbox
+        self.label_spinbox_label = QLabel("Number of X-axis labels to display:")
+        self.label_spinbox_label.setStyleSheet("""
+            QLabel {
+                font-size: 14pt;
+                font-weight: bold;
+                color: #A0C4FF;
+            }
+        """)
         self.label_spinbox = QSpinBox(self)
         self.label_spinbox.setRange(1, 20)  # Set a reasonable range for label steps
         self.label_spinbox.setValue(6)  # Default value for step count
-        self.label_spinbox.setSuffix(" labels")  # Add a label suffix
+        self.label_spinbox.setSuffix(" labels")
+        self.label_spinbox.setStyleSheet("""
+            QSpinBox {
+                padding: 5px;
+                font-size: 12pt;
+            }
+        """)
+        controls_layout.addWidget(self.label_spinbox_label)
+        controls_layout.addWidget(self.label_spinbox)
 
-        self.label_spinbox_label = QLabel("Number of X-axis labels to display:")
-        self.graph_layout.addWidget(self.label_spinbox_label)
-        self.graph_layout.addWidget(self.label_spinbox)
-        
-        # Add a button to plot the graph
+        # Spacer to push the "Plot Graph" button to the bottom
+        controls_layout.addStretch()
+
+        # Plot Graph button
         self.plot_button = QPushButton("Plot Graph", self)
+        self.plot_button.setFixedWidth(150)
+        self.plot_button.setStyleSheet("""
+            QPushButton {
+                background-color: #A0C4FF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 14pt;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #89A4FF;
+            }
+        """)
         self.plot_button.clicked.connect(self.plot_graph)
-        self.graph_layout.addWidget(self.plot_button)
+        controls_layout.addWidget(self.plot_button, alignment=Qt.AlignCenter)
 
-        # Set up the matplotlib canvas
-        self.canvas = FigureCanvas(Figure(figsize=(5, 3)))
-        self.graph_layout.addWidget(self.canvas)
+        # Add controls_layout to the left side of the main graph_layout
+        self.graph_layout.addLayout(controls_layout, stretch=1)
+
+        # Right-side layout for the graph area
+        graph_area_layout = QVBoxLayout()
+        graph_area_layout.setContentsMargins(20, 20, 20, 20)
+        graph_area_layout.setSpacing(10)
+
+        # Set up the matplotlib canvas with styles matching the Dashboard
+        self.canvas = MplCanvas(self, width=5, height=4, dpi=100)
+        self.canvas.setStyleSheet("""
+            background-color: #2e2e2e;
+        """)
+        graph_area_layout.addWidget(self.canvas)
+
+        # Optional: Add toolbar for better interactivity (if desired)
+        # from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
+        # self.toolbar = NavigationToolbar(self.canvas, self)
+        # graph_area_layout.addWidget(self.toolbar)
+
+        # Add graph_area_layout to the right side of the main graph_layout
+        self.graph_layout.addLayout(graph_area_layout, stretch=3)
+
+        # Ensure the graph_tab_widget uses the main horizontal layout
+        self.graph_tab_widget.setLayout(self.graph_layout)
 
         # Initialize an empty Axes
         self.canvas.ax = self.canvas.figure.add_subplot(111)
 
-        self.graph_tab_widget.setLayout(self.graph_layout)
+        # Apply consistent styles if necessary
+        self.apply_graph_styles()
 
-    
+    def apply_graph_styles(self):
+        """Apply consistent styles to the graph area."""
+        self.canvas.figure.patch.set_facecolor('#2e2e2e')  # Dark background
+        self.canvas.ax.set_facecolor('#2e2e2e')  # Dark background for the plot area
+        self.canvas.ax.tick_params(axis='x', colors='white')  # White ticks for visibility
+        self.canvas.ax.tick_params(axis='y', colors='white')
+        self.canvas.ax.xaxis.label.set_color('white')  # White labels
+        self.canvas.ax.yaxis.label.set_color('white')
+
     def plot_graph(self):
         """Plot the graph with the selected X and Y axis, and enable click to show data values."""
+        if not hasattr(self, 'df') or self.df.empty:
+            QMessageBox.warning(self, "No Data", "No data available to plot. Please run a script to load data.")
+            return
+
         # Clear the previous plot
         self.canvas.ax.clear()
 
@@ -578,36 +666,47 @@ class MainApp(QWidget):
         x_column = self.x_axis_combo.currentText()
         y_column = self.y_axis_combo.currentText()
 
+        if not x_column or not y_column:
+            QMessageBox.warning(self, "Selection Error", "Please select both X and Y axes.")
+            return
+
         # Get the number of labels to show from the spinbox
         max_labels = self.label_spinbox.value()
 
         # Plot the graph
-        x_data = self.df[x_column]
-        y_data = self.df[y_column]
+        try:
+            x_data = self.df[x_column]
+            y_data = self.df[y_column]
 
-        # Scatter plot with labels
-        scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True)
+            # Scatter plot
+            scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True, color='#A0C4FF')
 
-        # Set axis labels
-        self.canvas.ax.set_xlabel(x_column)
-        self.canvas.ax.set_ylabel(y_column)
+            # Set axis labels
+            self.canvas.ax.set_xlabel(x_column)
+            self.canvas.ax.set_ylabel(y_column)
 
-        # Ensure proper tick placement for X-axis labels
-        num_points = len(x_data)
-        step = max(1, num_points // max_labels)  # Calculate step based on number of labels
+            # Ensure proper tick placement for X-axis labels
+            num_points = len(x_data)
+            step = max(1, num_points // max_labels)  # Calculate step based on number of labels
 
-        # Set X-axis ticks and labels
-        tick_indices = range(0, num_points, step)
-        self.canvas.ax.set_xticks([x_data[i] for i in tick_indices])
-        self.canvas.ax.set_xticklabels([x_data[i] for i in tick_indices], ha="right")
-        
-        self.canvas.figure.tight_layout()
+            # Set X-axis ticks and labels
+            tick_indices = range(0, num_points, step)
+            self.canvas.ax.set_xticks([x_data[i] for i in tick_indices])
+            self.canvas.ax.set_xticklabels([x_data[i] for i in tick_indices], ha="right", color='white')
 
-        # Redraw the canvas
-        self.canvas.draw()
+            # Set Y-axis ticks and labels
+            self.canvas.ax.tick_params(axis='y', colors='white')
 
-        # Connect the click event to show data point value
-        self.canvas.mpl_connect("pick_event", self.on_click)
+            self.canvas.figure.tight_layout()
+
+            # Redraw the canvas
+            self.canvas.draw()
+
+            # Connect the click event to show data point value
+            self.canvas.mpl_connect("pick_event", self.on_click)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Plot Error", f"An error occurred while plotting the graph:\n{str(e)}")
 
     def on_click(self, event):
         """Handle click events on the plot and display the clicked data point value."""
@@ -620,12 +719,15 @@ class MainApp(QWidget):
         y_column = self.y_axis_combo.currentText()
 
         # Get the data point values
-        x_value = self.df[x_column].iloc[ind]
-        y_value = self.df[y_column].iloc[ind]
+        try:
+            x_value = self.df[x_column].iloc[ind]
+            y_value = self.df[y_column].iloc[ind]
 
-        # Show the data point value in a message box
-        QMessageBox.information(self, "Data Point", f"X: {x_value}\nY: {y_value}")
-        
+            # Show the data point value in a message box
+            QMessageBox.information(self, "Data Point", f"X: {x_value}\nY: {y_value}")
+        except IndexError:
+            QMessageBox.warning(self, "Index Error", "Clicked point is out of range.")
+
     def create_scrollable_file_list(self, file_names):
         """Create a scrollable area containing buttons for the given file names."""
         # Container widget for the file buttons
@@ -747,7 +849,7 @@ class MainApp(QWidget):
         except Exception as e:
             # Handle any other unexpected exceptions
             QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")
-  
+
     def create_category_button(self, text, items, identifier):
         button = QPushButton(text, self)
         button.setFixedWidth(300)  # Set a fixed width for all category buttons
@@ -898,6 +1000,7 @@ class MainApp(QWidget):
             msg_box.setWindowTitle("Button Clicked")
             msg_box.setText(f"You clicked: {button.text()}")
             msg_box.exec()
+
     def run_all_daily_items(self):
         try:
             # Get the list of script paths for daily scripts
