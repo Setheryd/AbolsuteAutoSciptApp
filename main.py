@@ -1565,9 +1565,10 @@ class MainApp(QWidget):
                 print(f"Raw Output from {file_name}:\n{output}")
 
                 try:
-                    # Attempt to parse the output as a fixed-width formatted DataFrame
-                    df = pd.read_fwf(StringIO(output))
-                    self.display_dataframe(df)
+                    # Attempt to parse the output as a CSV formatted DataFrame
+                    # Assuming the script output is CSV formatted (comma-separated)
+                    df = pd.read_csv(StringIO(output))
+                    self.display_dataframe(df)  # Assuming you have a method to display the DataFrame
                 except pd.errors.ParserError as pe:
                     QMessageBox.critical(self, "Error", f"DataFrame Parsing error: {str(pe)}")
                 except Exception as e:
@@ -1583,6 +1584,7 @@ class MainApp(QWidget):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")
+
 
 # =============================================================================
 # Main Entry Point

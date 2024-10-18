@@ -5,8 +5,8 @@ from patient_data_extractor import PatientDataExtractor
 def main():
     extractor = PatientDataExtractor()
     
-    # Extract the DataFrame without exporting to CSV
-    df = extractor.extract_eligible_patients()  # Ensure it doesn't output directly to stdout
+    # Extract the DataFrame directly
+    df = extractor.extract_eligible_patients()  # Removed output_to_csv argument
 
     if df is not None:
         # Convert 'First NOA Date' and 'Discharge Date' to datetime for proper handling
@@ -29,16 +29,13 @@ def main():
                 (df['First NOA Date'] <= month) &
                 ((df['Discharge Date'].isna()) | (df['Discharge Date'] >= month))
             ]
-            active_patient_counts.append({
-                'Month/Year': month.strftime('%B %Y'),
-                'Active Patients': len(active_patients)
-            })
+            active_patient_counts.append({'Month-Year': month.strftime('%B/%Y'), 'Active Patients': len(active_patients)})
 
         # Convert the list of results into a DataFrame
         df_active_patients_by_month = pd.DataFrame(active_patient_counts)
 
-        # Print the DataFrame without the index and without summary information
-        print(df_active_patients_by_month.to_string(index=False))
+        # Output the DataFrame to stdout
+        print(df_active_patients_by_month.to_csv(index=False))
 
     else:
         sys.exit(1)  # Exit with error code if no data
