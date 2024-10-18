@@ -45,7 +45,7 @@ class CaregiverDataExtractor:
         
         return scan_directory(base_path, 0)
 
-    def extract_caregivers(self, output_to_csv=False, output_file=None):
+    def extract_caregivers(self):
         try:
             logging.debug(f"Base path: {self.base_path}")
             if not os.path.exists(self.base_path):
@@ -74,13 +74,11 @@ class CaregiverDataExtractor:
                         print(f"File not found: {filename}")  # Debugging print
                         continue
                     else:
-                        # print(f"File found: {file_path}")  # Debugging print
                         logging.info(f"File found: {file_path}")
 
                     # Open the workbook and list sheets
                     try:
                         wb = excel.Workbooks.Open(file_path, False, True, None, self.password, '', True)
-                        # print([sheet.Name for sheet in wb.Sheets])  # Debugging print: check available sheets
                     except Exception as e:
                         logging.error(f"Error opening file {file_path}: {e}")
                         print(f"Error opening file {file_path}: {e}")  # Debugging print
@@ -91,7 +89,6 @@ class CaregiverDataExtractor:
                         ws = wb.Sheets("Contractor_Employee")
                         used_range = ws.UsedRange
                         data = used_range.Value  # Read all data at once
-                        # print(f"Used range data: {data}")  # Debugging print
 
                         if not data:
                             logging.warning(f"No data found in 'Contractor_Employee' sheet in '{filename}'")
@@ -104,13 +101,9 @@ class CaregiverDataExtractor:
 
                     # Extract data from columns C, H, J
                     for row in data[2:]:  # Skip header row
-                        # print(f"Row data: {row}")  # Debugging print
                         contractor_name = row[2] if len(row) >= 3 else None  # Column C (3rd)
                         date_of_hire = row[7] if len(row) >= 8 else None  # Column H (8th)
                         term_date = row[9] if len(row) >= 10 else None  # Column J (10th)
-
-                        # Debugging prints
-                        # print(f"Contractor Name: {contractor_name}, Date of Hire: {date_of_hire}, Term Date: {term_date}")
 
                         if contractor_name:
                             collected_data.append({
@@ -152,14 +145,6 @@ class CaregiverDataExtractor:
                 df["Date of Hire (H)"] = df["Date of Hire (H)"].apply(format_date)
                 df["Term Date (J)"] = df["Term Date (J)"].apply(format_date)
                 
-                if output_to_csv:
-                    if output_file:
-                        df.to_csv(output_file, index=False)
-                        logging.info(f"DataFrame saved to CSV file: {output_file}")
-                    else:
-                        df.to_csv(sys.stdout, index=False)
-                        logging.info("DataFrame output to stdout.")
-
                 return df
             else:
                 logging.info("No data collected.")
