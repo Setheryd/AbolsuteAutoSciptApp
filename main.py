@@ -708,7 +708,8 @@ class MainApp(QWidget):
             "Employee Records Hours": "Employee_Records_by_Month.py",
             "Active Admission Count by Service": "Active_Admission_by_Service.py",
             "View Billing Data" : "billing_files_extractor.py",
-            "Patient Tenure" : "Patient_Tenure_by_Group.py"
+            "Patient Tenure" : "Patient_Tenure_by_Group.py",
+            "Patient Attrition" : "../monthly_tasks/patient_attrition.py"
         }
 
         button_container = QWidget()
