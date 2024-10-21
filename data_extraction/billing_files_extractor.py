@@ -13,8 +13,19 @@ logging.basicConfig(
 
 class BillingFilesDataExtractor:
     def __init__(self, base_path=None, password="abs$0321$S"):
-        self.base_path = base_path or f"C:\\Users\\{os.getlogin()}\\OneDrive - Ability Home Health, LLC\\Absolute Billing and Payroll"
+        # Define the base path without the required directory
+        base = base_path or f"C:\\Users\\{os.getlogin()}\\OneDrive - Ability Home Health, LLC"
+        required_directory = "Absolute Billing and Payroll"
+        self.base_path = os.path.join(base, required_directory)
         self.password = password
+
+        # Check if the required directory exists
+        if not os.path.exists(self.base_path):
+            logging.error(f"Required directory does not exist: {self.base_path}")
+            raise FileNotFoundError(f"Required directory does not exist: {self.base_path}")
+        else:
+            logging.debug(f"Using base path: {self.base_path}")
+
         # Define files and corresponding sheets to be processed
         self.files_info = {
             "Anthem ATTC&HMK 2023-2024.xlsx": ["Indy ATTC&HMK 2024", "SB ATTC&HMK 2024"],
@@ -197,15 +208,20 @@ class BillingFilesDataExtractor:
                 return None
 
         except Exception as e:
-            logging.error(f"Error in process_scheduling_files: {e}")
+            logging.error(f"Error in process_billing_files: {e}")
             print(f"Error: {e}")
 
 # Run the extraction process
 if __name__ == "__main__":
-    extractor = BillingFilesDataExtractor()
-    df = extractor.process_billing_files()
-    if df is not None:
-        # Output DataFrame in CSV format without index
-        print(df.to_csv(index=False))
-    else:
-        print("No eligible patient data was extracted.")
+    try:
+        extractor = BillingFilesDataExtractor()
+        df = extractor.process_billing_files()
+        if df is not None:
+            # Output DataFrame in CSV format without index
+            print(df.to_csv(index=False))
+        else:
+            print("No eligible patient data was extracted.")
+    except FileNotFoundError as fnf_error:
+        print(fnf_error)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
