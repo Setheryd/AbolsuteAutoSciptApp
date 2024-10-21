@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (  # type: ignore
     QSpinBox,
     QTableWidgetItem,
     QSplitter,
+    QAbstractItemView,
 )
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
 from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
@@ -703,9 +704,11 @@ class MainApp(QWidget):
             "View Patient Data": "patient_data_extractor.py",
             "Active Contractor per Month": "Caregiver_by_Month.py",
             "View Contractor Data": "caregiver_data_extractor.py",
-            "Generate Report 4": "Report4.py",
-            "Generate Report 5": "Report5.py",
-            "Run Custom Report 6": "Report6.py"
+            "View Employee Records Data": "employee_records_data_extractor.py",
+            "Employee Records Hours": "Employee_Records_by_Month.py",
+            "Active Admission Count by Service": "Active_Admission_by_Service.py",
+            "View Billing Data" : "billing_files_extractor.py",
+            "Patient Tenure" : "Patient_Tenure_by_Group.py"
         }
 
         button_container = QWidget()
@@ -740,10 +743,23 @@ class MainApp(QWidget):
         self.table_widget = CustomTableWidget()
         self.table_widget.setColumnCount(0)
         self.table_widget.setRowCount(0)
+        self.table_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)  # Allow multiple selections
+        self.table_widget.setSelectionBehavior(QAbstractItemView.SelectItems)  # Item selection behavior
+
+        # Apply styles to show cell selection clearly
         self.table_widget.setStyleSheet("""
             QTableWidget {
                 background-color: #f0f0f0;
                 color: black;
+            }
+            QTableWidget::item:selected {
+                background-color: #3498db; /* Custom color for selected cells */
+                color: white; /* Text color for selected cells */
+                border: 2px solid #2980b9; /* Optional border for selected cells */
+            }
+            QTableWidget::item {
+                background-color: white; /* Normal cell background */
+                color: black; /* Normal cell text color */
             }
         """)
 

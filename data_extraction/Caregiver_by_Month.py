@@ -36,16 +36,37 @@ def main():
         # Create a list of months between the start and end date
         all_months = pd.date_range(start=start_date, end=end_date, freq='MS')
 
-        # Create an empty list to store the count of active caregivers per month
+        # Create an empty list to store the count of active caregivers and attrition rate per month
         active_caregiver_counts = []
 
-        # Loop through each month and count the number of active caregivers
+        # Loop through each month and count the number of active caregivers and caregivers who left
         for month in all_months:
             active_caregivers = df[
                 (df["Date of Hire (H)"] <= month) & 
                 ((df["Term Date (J)"].isna()) | (df["Term Date (J)"] >= month))
             ]
-            active_caregiver_counts.append({'Month-Year': month.strftime('%B-%Y'), 'Active Caregivers': len(active_caregivers)})
+            num_active_caregivers = len(active_caregivers)
+            
+            # Count the number of caregivers who left during the month
+            caregivers_left = df[
+                (df["Term Date (J)"] >= month) & 
+                (df["Term Date (J)"] < month + pd.DateOffset(months=1))
+            ]
+            num_caregivers_left = len(caregivers_left)
+            
+            # Calculate attrition rate as a percentage
+            if num_active_caregivers > 0:
+                attrition_rate = (num_caregivers_left / num_active_caregivers) * 100
+                attrition_rate_str = f"{attrition_rate:.2f}%"  # Format as a percentage string
+            else:
+                attrition_rate_str = "0.00%"  # No active caregivers, so attrition is 0
+            
+            active_caregiver_counts.append({
+                'Month-Year': month.strftime('%B-%Y'), 
+                'Active Caregivers': num_active_caregivers,
+                'Caregivers Left': num_caregivers_left,
+                'Attrition Rate (%)': attrition_rate_str
+            })
 
         # Convert the list of results into a DataFrame
         df_active_caregivers_by_month = pd.DataFrame(active_caregiver_counts)
