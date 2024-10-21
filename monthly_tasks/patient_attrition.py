@@ -115,16 +115,24 @@ class ChurnAttritionAnalyzer:
         ]
         average_net_change = pd.Series(net_changes).mean() if net_changes else 0
 
-        # Calculate churn and attrition rates
-        churn = (
-            (abs(net_change) / active_start_count) * 100 if active_start_count else 0
-        )
-        # Attrition rate: number of discharges during the month divided by average number of patients
+        # Calculate discharges in the report month
         discharges = df[
             (df["Discharge Date"] >= start_of_month)
             & (df["Discharge Date"] <= end_of_month)
         ]
         num_discharges = discharges["Patient Name"].nunique()
+
+        # Calculate new patients in the report month
+        new_patients = df[
+            (df["First NOA Date"] >= start_of_month)
+            & (df["First NOA Date"] <= end_of_month)
+        ]["Patient Name"].nunique()
+
+        # Calculate churn and attrition rates based on new definitions
+        churn = (
+            (num_discharges / active_end_count) * 100 if active_end_count else 0
+        )
+        # Attrition rate: number of discharges during the month divided by average number of patients
         average_patients = (active_start_count + active_end_count) / 2
         attrition = (num_discharges / average_patients) * 100 if average_patients else 0
 
@@ -133,6 +141,8 @@ class ChurnAttritionAnalyzer:
             "Report Month": report_month.strftime("%B %Y"),
             "Starting Patient Count": active_start_count,
             "Ending Patient Count": active_end_count,
+            "New Patients": new_patients,  # Added new patients
+            "Discharged Patients": num_discharges,  # Added discharged patients
             "Net Change": net_change,
             "Average Net Change": round(average_net_change, 2),
             "Churn Rate (%)": round(churn, 2),
@@ -182,12 +192,12 @@ class ChurnAttritionAnalyzer:
         Args:
             report_df (pd.DataFrame): DataFrame containing monthly reports.
         """
-        # Convert 'Report Month' to datetime for plotting
+            # Convert 'Report Month' to datetime for plotting
         report_df["Report Month Date"] = pd.to_datetime(
-            report_df["Report Month"], format="%B %Y"
-        )
+        report_df["Report Month"], format="%B %Y"
+            )
 
-        # Plot Churn and Attrition Rates
+            # Plot Churn and Attrition Rates
         plt.figure(figsize=(14, 7))
         plt.plot(
             report_df["Report Month Date"],
@@ -231,15 +241,13 @@ class ChurnAttritionAnalyzer:
 
         # Generate all monthly reports
         report_df = self.generate_all_monthly_reports(df)
-        print("Monthly Report:")
-        print(report_df.tail())  # Display the last few reports
 
         # Instead of saving to CSV, get the CSV string
         csv_string = self.get_csv_string(report_df)
-        print("\nCSV-formatted Report:")
+  
         print(csv_string)
         
-
+    
         # Generate charts
         self.generate_charts(report_df)
 
