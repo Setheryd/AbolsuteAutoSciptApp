@@ -10,6 +10,8 @@ import sys
 import subprocess
 from datetime import datetime, timedelta
 from io import StringIO
+import threading
+
 
 # Third-Party Imports
 import win32com.client as win32  # type: ignore
@@ -37,8 +39,10 @@ from PySide6.QtWidgets import (  # type: ignore
     QTableWidgetItem,
     QSplitter,
     QAbstractItemView,
+    QProgressBar,
+    QGraphicsBlurEffect,
 )
-from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
+from PySide6.QtCore import Qt, QProcess, Slot, QTimer, QPropertyAnimation  # type: ignore
 from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -736,11 +740,13 @@ class MainApp(QWidget):
 
     def setup_dashboard_right_side(self, splitter):
         """
-        Sets up the right-side layout for displaying the DataFrame.
-
+        Sets up the right-side layout for displaying the DataFrame and includes a Gaussian blur
+        and loading bar while retrieving data.
+        
         Args:
             splitter (QSplitter): The splitter to add the right-side widget to.
         """
+        # Set up the table widget where DataFrame will be displayed
         self.table_widget = CustomTableWidget()
         self.table_widget.setColumnCount(0)
         self.table_widget.setRowCount(0)
@@ -754,9 +760,9 @@ class MainApp(QWidget):
                 color: black;
             }
             QTableWidget::item:selected {
-                background-color: #3498db; /* Custom color for selected cells */
-                color: white; /* Text color for selected cells */
-                border: 2px solid #2980b9; /* Optional border for selected cells */
+                background-color: #A0C4FF; /* Custom color for selected cells */
+                color: black; /* Text color for selected cells */
+               
             }
             QTableWidget::item {
                 background-color: white; /* Normal cell background */
@@ -764,26 +770,69 @@ class MainApp(QWidget):
             }
         """)
 
-        splitter.addWidget(self.table_widget)
+        # Container to hold the table and blur/loading elements
+        self.right_side_widget = QWidget()
+        right_side_layout = QVBoxLayout(self.right_side_widget)
+
+        # Loading bar
+        self.loading_bar = QProgressBar(self.right_side_widget)
+        self.loading_bar.setRange(0, 0)  # Indeterminate progress bar
+        self.loading_bar.setTextVisible(False)
+        self.loading_bar.setFixedHeight(30)
+        self.loading_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #e0e0e0;
+                border: none;
+            }
+            QProgressBar::chunk {
+                background-color: #A0C4FF;
+            }
+        """)
+
+        # "Retrieving Data" label
+        self.retrieving_data_label = QLabel("Retrieving data...", self.right_side_widget)
+        self.retrieving_data_label.setAlignment(Qt.AlignCenter)
+        self.retrieving_data_label.setStyleSheet(
+            """
+            QLabel {
+                color: #A0C4FF;
+                font-size: 16pt;
+                font-weight: bold;
+            }
+        """
+        )
+
+        # Add table widget, loading bar, and label to layout
+        right_side_layout.addWidget(self.table_widget)
+        right_side_layout.addWidget(self.retrieving_data_label)
+        right_side_layout.addWidget(self.loading_bar)
+
+        # Initially hide the loading components
+        self.loading_bar.hide()
+        self.retrieving_data_label.hide()
+
+        # Apply blur effect to the table when retrieving data
+        self.blur_effect = QGraphicsBlurEffect(self)
+        self.blur_effect.setBlurRadius(10)
+        self.table_widget.setGraphicsEffect(self.blur_effect)
+        self.blur_effect.setEnabled(False)
+
+        splitter.addWidget(self.right_side_widget)
 
     def setup_dashboard_bottom_buttons(self):
         """
         Sets up the bottom buttons (Save DataFrame, Copy Selected) for the Dashboard tab.
         """
         bottom_buttons_layout = QHBoxLayout()
-        bottom_buttons_layout.setAlignment(Qt.AlignCenter)
+        bottom_buttons_layout.setAlignment(Qt.AlignRight)
 
         # Save DataFrame Button
-        self.save_dataframe_button = QPushButton("Save DataFrame")
+        self.save_dataframe_button = QPushButton("Export to CSV")
         self.save_dataframe_button.clicked.connect(self.save_dataframe)
-
-        # Copy Selected Button
-        self.copy_selected_button = QPushButton("Copy Selected")
-        self.copy_selected_button.clicked.connect(self.table_widget.copy_selected_data)
 
         # Add Buttons to Layout
         bottom_buttons_layout.addWidget(self.save_dataframe_button)
-        bottom_buttons_layout.addWidget(self.copy_selected_button)
+        
 
         # Add Bottom Buttons Layout to Secondary Layout
         self.secondary_layout.addLayout(bottom_buttons_layout)
@@ -1554,54 +1603,77 @@ class MainApp(QWidget):
 
     def run_python_script(self, file_name):
         """
-        Executes a Python script and displays its DataFrame output.
-
+        Executes a Python script on a separate thread and displays its DataFrame output.
+        
         Args:
             file_name (str): The name of the script file to execute.
         """
-        try:
-            # Construct the full path to the script
-            script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_extraction")
-            script_path = os.path.join(script_dir, file_name)
+        def execute_script():
+            try:
+                # Show loading bar and blur effect
+                self.toggle_loading(True)
 
-            # Check if the script exists
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found: {file_name}")
-                return
+                # Construct the full path to the script
+                script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_extraction")
+                script_path = os.path.join(script_dir, file_name)
 
-            # Execute the script
-            process = subprocess.Popen(
-                [sys.executable, script_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True  # Ensures the output is returned as a string
-            )
-            stdout, stderr = process.communicate()
+                # Check if the script exists
+                if not os.path.exists(script_path):
+                    self.log_text.append(f"<span style='color: red;'>Script not found: {file_name}</span>")
+                    return
 
-            if process.returncode == 0:
-                output = stdout.strip()
-                print(f"Raw Output from {file_name}:\n{output}")
-
-                try:
-                    # Attempt to parse the output as a CSV formatted DataFrame
-                    # Assuming the script output is CSV formatted (comma-separated)
-                    df = pd.read_csv(StringIO(output))
-                    self.display_dataframe(df)  # Assuming you have a method to display the DataFrame
-                except pd.errors.ParserError as pe:
-                    QMessageBox.critical(self, "Error", f"DataFrame Parsing error: {str(pe)}")
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"Failed to parse DataFrame output: {str(e)}")
-            else:
-                error_message = stderr.strip()
-                print(f"Error Output from {file_name}:\n{error_message}")
-                QMessageBox.critical(
-                    self, 
-                    "Error", 
-                    f"Script '{file_name}' failed to execute.\nError: {error_message}"
+                # Execute the script
+                process = subprocess.Popen(
+                    [sys.executable, script_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True  # Ensures the output is returned as a string
                 )
+                stdout, stderr = process.communicate()
 
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred while executing the script: {str(e)}")
+                if process.returncode == 0:
+                    output = stdout.strip()
+                    print(f"Raw Output from {file_name}:\n{output}")
+
+                    try:
+                        # Attempt to parse the output as a CSV formatted DataFrame
+                        df = pd.read_csv(StringIO(output))
+                        self.display_dataframe(df)  # Display the DataFrame in the UI
+                    except pd.errors.ParserError as pe:
+                        self.log_text.append(f"<span style='color: red;'>DataFrame Parsing error: {str(pe)}</span>")
+                    except Exception as e:
+                        self.log_text.append(f"<span style='color: red;'>Failed to parse DataFrame output: {str(e)}</span>")
+                else:
+                    error_message = stderr.strip()
+                    print(f"Error Output from {file_name}:\n{error_message}")
+                    self.log_text.append(f"<span style='color: red;'>Error executing script: {error_message}</span>")
+
+            except Exception as e:
+                self.log_text.append(f"<span style='color: red;'>An error occurred: {str(e)}</span>")
+            finally:
+                # Hide loading bar and blur effect
+                self.toggle_loading(False)
+
+        # Start the script execution in a separate thread
+        threading.Thread(target=execute_script).start()
+
+    def toggle_loading(self, is_loading):
+        """
+        Toggles the loading bar, retrieving data label, and blur effect.
+
+        Args:
+            is_loading (bool): True to show loading components, False to hide them.
+        """
+        if is_loading:
+            # Show loading components and enable blur effect
+            self.loading_bar.show()
+            self.retrieving_data_label.show()
+            self.blur_effect.setEnabled(True)
+        else:
+            # Hide loading components and disable blur effect
+            self.loading_bar.hide()
+            self.retrieving_data_label.hide()
+            self.blur_effect.setEnabled(False)
 
 
 # =============================================================================
@@ -1643,3 +1715,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
