@@ -290,7 +290,7 @@ class MainApp(QWidget):
             "Expired NOAs": os.path.join(script_dir, "monthly_tasks", "NOA_exp.py"),
             "Inventory Request": os.path.join(script_dir, "monthly_tasks", "inventory_request.py"),
             "Next Months Expired NOAs": os.path.join(script_dir, "monthly_tasks", "next_month_NOA_exp.py"),
-            "Patient Attrition": os.path.join(script_dir, "monthly_tasks", "patient_attrition.py"),
+            "Patient Attrition": os.path.join(script_dir, "monthly_tasks", "patient_attrition_email.py"),
         }
 
     def initialize_ui(self):
