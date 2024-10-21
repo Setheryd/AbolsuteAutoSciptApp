@@ -204,27 +204,7 @@ class ChurnAttritionAnalyzer:
         report_df.to_csv(filename, index=False)
         print(f"Monthly reports have been saved to {filename}.")
 
-    def save_outliers(self, outliers_churn, outliers_attrition, filename=None):
-        """
-        Save the outliers to an Excel file.
-
-        Args:
-            outliers_churn (pd.DataFrame): DataFrame containing churn rate outliers.
-            outliers_attrition (pd.DataFrame): DataFrame containing attrition rate outliers.
-            filename (str, optional): The filename for the Excel file. Defaults to 'outliers_report.xlsx'.
-        """
-        if filename is None:
-            filename = self.outliers_filename
-        with pd.ExcelWriter(filename, engine="xlsxwriter") as writer:
-            if not outliers_churn.empty:
-                outliers_churn[["Report Month", "Churn Rate (%)"]].to_excel(
-                    writer, sheet_name="Churn Rate Outliers", index=False
-                )
-            if not outliers_attrition.empty:
-                outliers_attrition[["Report Month", "Attrition Rate (%)"]].to_excel(
-                    writer, sheet_name="Attrition Rate Outliers", index=False
-                )
-        print(f"Outliers have been saved to {filename}.")
+    
 
     def generate_charts(self, report_df, outliers_churn, outliers_attrition):
         """
@@ -333,9 +313,6 @@ class ChurnAttritionAnalyzer:
             print(outliers_attrition[["Report Month", "Attrition Rate (%)"]])
         else:
             print("\nNo outliers detected in Attrition Rate.")
-
-        # Save outliers to an Excel file
-        self.save_outliers(outliers_churn, outliers_attrition)
 
         # Generate charts
         self.generate_charts(report_df, outliers_churn, outliers_attrition)
