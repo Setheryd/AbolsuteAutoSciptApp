@@ -1,4 +1,4 @@
-# churn_attrition_analysis.py
+#patient_attrition.py
 
 import pandas as pd
 import os
