@@ -2,11 +2,20 @@
 
 import pandas as pd
 import os
+import sys
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MaxNLocator
-from data_extraction.patient_data_extractor import PatientDataExtractor
+
+# Get the parent directory of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+# Add the data_extraction directory to the system path
+sys.path.append(os.path.join(parent_dir, 'data_extraction'))
+
+from patient_data_extractor import PatientDataExtractor
 
 
 class ChurnAttritionAnalyzer:
