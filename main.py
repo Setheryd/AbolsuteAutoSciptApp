@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (  # type: ignore
     QSpinBox,
     QTableWidgetItem,
     QSplitter,
+    QAbstractItemView,
 )
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer  # type: ignore
 from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
@@ -740,10 +741,23 @@ class MainApp(QWidget):
         self.table_widget = CustomTableWidget()
         self.table_widget.setColumnCount(0)
         self.table_widget.setRowCount(0)
+        self.table_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)  # Allow multiple selections
+        self.table_widget.setSelectionBehavior(QAbstractItemView.SelectItems)  # Item selection behavior
+
+        # Apply styles to show cell selection clearly
         self.table_widget.setStyleSheet("""
             QTableWidget {
                 background-color: #f0f0f0;
                 color: black;
+            }
+            QTableWidget::item:selected {
+                background-color: #3498db; /* Custom color for selected cells */
+                color: white; /* Text color for selected cells */
+                border: 2px solid #2980b9; /* Optional border for selected cells */
+            }
+            QTableWidget::item {
+                background-color: white; /* Normal cell background */
+                color: black; /* Normal cell text color */
             }
         """)
 
