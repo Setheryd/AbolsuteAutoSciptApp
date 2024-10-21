@@ -12,7 +12,7 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s:%(message)s'
 )
 
-class CaregiverDataExtractor:
+class EmployeeRecordsExtractor:
     def __init__(self, base_path=None, password="abs$1018$B"):
         self.base_path = base_path or f"C:\\Users\\{os.getlogin()}\\OneDrive - Ability Home Health, LLC\\"
         self.password = password
@@ -58,7 +58,7 @@ class CaregiverDataExtractor:
             processed_data.append([self.convert_pywintypes_to_string(value) for value in row])
         return processed_data
 
-    def process_scheduling_files(self, output_file):
+    def process_scheduling_files(self):
         """ Extract data from 'Indy Scheduling tool' and 'SB Scheduling Tool', combine all workbook data, and save once. """
         all_combined_data = []  # To store all data from all workbooks
 
@@ -90,14 +90,14 @@ class CaregiverDataExtractor:
                         print(f"File not found: {filename}")  # Debugging print
                         continue
                     else:
-                        print(f"File found: {file_path}")  # Debugging print
+                        # print(f"File found: {file_path}")  # Debugging print
                         logging.info(f"File found: {file_path}")
 
                     # Open the workbook and list sheets
                     try:
                         wb = excel.Workbooks.Open(file_path, False, True, None, self.password, '', True)
                         sheets = [sheet.Name for sheet in wb.Sheets]  # List all sheet names
-                        print(f"Sheets found in {filename}: {sheets}")  # Debugging print
+                        # print(f"Sheets found in {filename}: {sheets}")  # Debugging print
 
                         # Process 'Indy Scheduling tool' and 'SB Scheduling Tool'
                         if 'Indy Scheduling tool' in sheets and 'SB Scheduling Tool' in sheets:
@@ -170,17 +170,24 @@ class CaregiverDataExtractor:
                 df_cleaned = df_cleaned.dropna(subset=['Caregiver'])
 
                 # Export the combined DataFrame to a CSV file
-                df_cleaned.to_csv(output_file, index=False)
-                print(f"Data has been saved to: {output_file}")
+                # df_cleaned.to_csv(output_file, index=False)
+                # print(f"Data has been saved to: {output_file}")
+                return df_cleaned
             else:
-                print("No data was extracted from the workbooks.")
+                # print("No data was extracted from the workbooks.")
                 logging.warning("No data was extracted from any of the workbooks.")
+                return None
 
         except Exception as e:
             logging.error(f"Error in process_scheduling_files: {e}")
-            print(f"Error: {e}")
+            # print(f"Error: {e}")
 
 # Run the extraction process
 if __name__ == "__main__":
-    extractor = CaregiverDataExtractor(base_path="C:\\Users\\JoshuaAckermann\\OneDrive - Ability Home Health, LLC\\")
-    extractor.process_scheduling_files('C:\\Users\\JoshuaAckermann\\downloads\\combined_scheduling_final.csv')
+    extractor = EmployeeRecordsExtractor()
+    df = extractor.process_scheduling_files()
+    if df is not None:
+        # Output DataFrame in CSV format without index
+        print(df.to_csv(index=False))
+    else:
+        print("No eligible patient data was extracted.")

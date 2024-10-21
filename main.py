@@ -703,9 +703,11 @@ class MainApp(QWidget):
             "View Patient Data": "patient_data_extractor.py",
             "Active Contractor per Month": "Caregiver_by_Month.py",
             "View Contractor Data": "caregiver_data_extractor.py",
-            "Generate Report 4": "Report4.py",
-            "Generate Report 5": "Report5.py",
-            "Run Custom Report 6": "Report6.py"
+            "View Employee Records Data": "employee_records_data_extractor.py",
+            "Employee Records Hours": "Employee_Records_by_Month.py",
+            "Active Admission Count by Service": "Active_Admission_by_Service.py",
+            "View Billing Data" : "billing_files_extractor.py",
+            "Patient Tenure" : "Patient_Tenure_by_Group.py"
         }
 
         button_container = QWidget()

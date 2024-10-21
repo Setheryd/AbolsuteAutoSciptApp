@@ -11,7 +11,7 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s:%(message)s'
 )
 
-class CaregiverDataExtractor:
+class BillingFilesDataExtractor:
     def __init__(self, base_path=None, password="abs$0321$S"):
         self.base_path = base_path or f"C:\\Users\\{os.getlogin()}\\OneDrive - Ability Home Health, LLC\\Absolute Billing and Payroll"
         self.password = password
@@ -91,7 +91,7 @@ class CaregiverDataExtractor:
                 seen[col] = 1
         return headers
 
-    def process_scheduling_files(self, output_file):
+    def process_billing_files(self):
         """ Extract data from specified sheets, combine all workbook data, and save to separate sheets in one Excel workbook. """
         merged_df = pd.DataFrame()  # Initialize the merged DataFrame
 
@@ -123,13 +123,13 @@ class CaregiverDataExtractor:
                             print(f"File not found: {filename}")
                             continue
                         else:
-                            print(f"File found: {file_path}")
+                            # print(f"File found: {file_path}")
                             logging.info(f"File found: {file_path}")
 
                         # Open the workbook (read-only mode)
                         wb = excel.Workbooks.Open(file_path, False, True, None, self.password, '', True)  # Read-only
                         available_sheets = [sheet.Name for sheet in wb.Sheets]  # List all available sheets
-                        print(f"Sheets found in {filename}: {available_sheets}")
+                        # print(f"Sheets found in {filename}: {available_sheets}")
                         logging.info(f"Processing file: {filename}")
 
                         # Process only the specified sheets
@@ -192,10 +192,9 @@ class CaregiverDataExtractor:
 
             # Export the merged DataFrame to a single Excel workbook
             if not merged_df.empty:
-                merged_df.to_excel(output_file, sheet_name="Merged Data", index=False)
-                print(f"Data has been saved to: {output_file}")
+                return merged_df
             else:
-                print("No data was extracted or merged.")
+                return None
 
         except Exception as e:
             logging.error(f"Error in process_scheduling_files: {e}")
@@ -203,5 +202,10 @@ class CaregiverDataExtractor:
 
 # Run the extraction process
 if __name__ == "__main__":
-    extractor = CaregiverDataExtractor(base_path="C:\\Users\\JoshuaAckermann\\OneDrive - Ability Home Health, LLC\\")
-    extractor.process_scheduling_files('C:\\Users\\JoshuaAckermann\\downloads\\merged_scheduling_cleaned.xlsx')
+    extractor = BillingFilesDataExtractor()
+    df = extractor.process_billing_files()
+    if df is not None:
+        # Output DataFrame in CSV format without index
+        print(df.to_csv(index=False))
+    else:
+        print("No eligible patient data was extracted.")
