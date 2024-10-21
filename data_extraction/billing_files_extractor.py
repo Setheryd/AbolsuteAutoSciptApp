@@ -12,17 +12,17 @@ logging.basicConfig(
 )
 
 class BillingFilesDataExtractor:
-    def __init__(self, base_path=None, password="abs$0321$S"):
+    def __init__(self, base_path=None, required_directory="Absolute Billing and Payroll", password="abs$0321$S"):
         # Define the base path without the required directory
         base = base_path or f"C:\\Users\\{os.getlogin()}\\OneDrive - Ability Home Health, LLC"
-        required_directory = "Absolute Billing and Payroll"
-        self.base_path = os.path.join(base, required_directory)
+        self.required_directory = required_directory
         self.password = password
 
-        # Check if the required directory exists
-        if not os.path.exists(self.base_path):
-            logging.error(f"Required directory does not exist: {self.base_path}")
-            raise FileNotFoundError(f"Required directory does not exist: {self.base_path}")
+        # Find the required directory within the base path
+        self.base_path = self.find_directory(base, self.required_directory, max_depth=5)
+        if self.base_path is None:
+            logging.error(f"Required directory '{self.required_directory}' not found within base path: {base}")
+            raise FileNotFoundError(f"Required directory '{self.required_directory}' not found within base path: {base}")
         else:
             logging.debug(f"Using base path: {self.base_path}")
 
@@ -41,7 +41,7 @@ class BillingFilesDataExtractor:
         }
 
     def find_file(self, base_path, filename, max_depth=5):
-        logging.debug(f"Searching for {filename} in {base_path} up to depth {max_depth}")
+        logging.debug(f"Searching for file '{filename}' in '{base_path}' up to depth {max_depth}")
         
         def scan_directory(path, current_depth):
             if current_depth > max_depth:
@@ -57,7 +57,29 @@ class BillingFilesDataExtractor:
                             if found_file:
                                 return found_file
             except PermissionError as e:
-                logging.warning(f"PermissionError: {e}")
+                logging.warning(f"PermissionError accessing '{path}': {e}")
+                return None
+        
+        return scan_directory(base_path, 0)
+
+    def find_directory(self, base_path, directory_name, max_depth=5):
+        logging.debug(f"Searching for directory '{directory_name}' in '{base_path}' up to depth {max_depth}")
+        
+        def scan_directory(path, current_depth):
+            if current_depth > max_depth:
+                return None
+            try:
+                with os.scandir(path) as it:
+                    for entry in it:
+                        if entry.is_dir() and entry.name.lower() == directory_name.lower():
+                            logging.debug(f"Found directory: {entry.path}")
+                            return entry.path
+                        elif entry.is_dir():
+                            found_dir = scan_directory(entry.path, current_depth + 1)
+                            if found_dir:
+                                return found_dir
+            except PermissionError as e:
+                logging.warning(f"PermissionError accessing '{path}': {e}")
                 return None
         
         return scan_directory(base_path, 0)
