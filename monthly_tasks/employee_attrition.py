@@ -31,13 +31,23 @@ class ChurnAttritionAnalyzer:
         """
         df = self.extractor.extract_caregivers()
         if df is not None:
+            # Rename columns first to avoid confusion during conversion
+            df = df.rename(columns={
+                "Contractor Name": "Contractor Name (C)",
+                "Date of Hire": "Date of Hire (H)",
+                "Term Date": "Term Date (J)"
+            })
+
             # Convert date columns from strings to datetime objects
             df["Date of Hire (H)"] = pd.to_datetime(df["Date of Hire (H)"], errors="coerce")
             df["Term Date (J)"] = pd.to_datetime(df["Term Date (J)"], errors="coerce")
+
             # Drop records with invalid Date of Hire
             df = df.dropna(subset=["Date of Hire (H)"])
+
             # Ensure no records have empty or null 'Contractor Name (C)'
             df = df.dropna(subset=["Contractor Name (C)"])
+
             return df
         else:
             print("No eligible employee data was extracted.")
@@ -93,8 +103,8 @@ class ChurnAttritionAnalyzer:
 
         # Calculate active contractors per month for average net change
         months = pd.period_range(
-            df["Date of Hire (H)"].min().to_period("M"),
-            end_of_month.to_period("M"),
+            start=df["Date of Hire (H)"].min(),
+            end=end_of_month,
             freq="M",
         )
         active_counts = []
@@ -160,9 +170,22 @@ class ChurnAttritionAnalyzer:
         Returns:
             pd.DataFrame: DataFrame containing all monthly reports.
         """
+        # Verify that "Date of Hire (H)" exists and is datetime
+        if "Date of Hire (H)" not in df.columns:
+            raise ValueError("Column 'Date of Hire (H)' does not exist in the DataFrame.")
+
+        if not pd.api.types.is_datetime64_any_dtype(df["Date of Hire (H)"]):
+            raise TypeError("'Date of Hire (H)' column is not of datetime type.")
+
+        # Define the end of the last month based on today's date
+        today = pd.Timestamp.today()
+        start_date = df["Date of Hire (H)"].min()
+        end_date = pd.Timestamp(datetime(today.year, today.month, 1)) - pd.DateOffset(days=1)
+
+        # Generate a range of months from the earliest hire date to the last full month
         months = pd.period_range(
-            df["Date of Hire (H)"].min().to_period("M"),
-            pd.Timestamp.today().to_period("M"),
+            start=start_date,
+            end=end_date,
             freq="M",
         )
         report_data = []
