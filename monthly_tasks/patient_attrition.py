@@ -13,7 +13,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 
 # Add the data_extraction directory to the system path
-sys.path.append(os.path.join(parent_dir, 'data_extraction'))
+sys.path.append(os.path.join(parent_dir, "data_extraction"))
 
 from patient_data_extractor import PatientDataExtractor
 
@@ -21,8 +21,7 @@ from patient_data_extractor import PatientDataExtractor
 class ChurnAttritionAnalyzer:
     def __init__(self, extractor: PatientDataExtractor):
         self.extractor = extractor
-        self.report_filename = "monthly_report.csv"
-        self.outliers_filename = "outliers_report.xlsx"
+        # Removed report_filename and outliers_filename since we are not saving files
 
     def load_data(self):
         """
@@ -36,8 +35,10 @@ class ChurnAttritionAnalyzer:
             # Convert date columns from strings to datetime objects
             df["First NOA Date"] = pd.to_datetime(df["First NOA Date"], errors="coerce")
             df["Discharge Date"] = pd.to_datetime(df["Discharge Date"], errors="coerce")
-            # Drop records with invalid First NOA Date
+            # Drop records with invalid First NOA Date (start date)
             df = df.dropna(subset=["First NOA Date"])
+            # Ensure no records have empty or null 'Patient Name'
+            df = df.dropna(subset=["Patient Name"])
             return df
         else:
             print("No eligible patient data was extracted.")
@@ -162,58 +163,24 @@ class ChurnAttritionAnalyzer:
         report_df = pd.DataFrame(report_data)
         return report_df
 
-    def detect_outliers(self, df_reports, column, method="IQR"):
+    def get_csv_string(self, report_df):
         """
-        Detect outliers in a specific column of the reports DataFrame.
-
-        Args:
-            df_reports (pd.DataFrame): DataFrame containing monthly reports.
-            column (str): The column in which to detect outliers.
-            method (str, optional): The method to use for outlier detection ('IQR' or 'Z-score'). Defaults to 'IQR'.
-
-        Returns:
-            pd.DataFrame: DataFrame containing outlier records.
-        """
-        if method == "IQR":
-            Q1 = df_reports[column].quantile(0.25)
-            Q3 = df_reports[column].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-            outliers = df_reports[
-                (df_reports[column] < lower_bound) | (df_reports[column] > upper_bound)
-            ]
-        elif method == "Z-score":
-            z_scores = stats.zscore(df_reports[column].dropna())
-            outliers = df_reports.iloc[(z_scores < -3) | (z_scores > 3)]
-        else:
-            raise ValueError("Unsupported method. Use 'IQR' or 'Z-score'.")
-
-        return outliers
-
-    def save_report(self, report_df, filename=None):
-        """
-        Save the report DataFrame to a CSV file.
+        Convert the report DataFrame to a comma-delimited string without indexing.
 
         Args:
             report_df (pd.DataFrame): DataFrame containing monthly reports.
-            filename (str, optional): The filename for the CSV. Defaults to 'monthly_report.csv'.
+
+        Returns:
+            str: Comma-delimited string of the report data.
         """
-        if filename is None:
-            filename = self.report_filename
-        report_df.to_csv(filename, index=False)
-        print(f"Monthly reports have been saved to {filename}.")
+        return report_df.to_csv(index=False)
 
-    
-
-    def generate_charts(self, report_df, outliers_churn, outliers_attrition):
+    def generate_charts(self, report_df):
         """
         Generate charts showing churn and attrition rates over time.
 
         Args:
             report_df (pd.DataFrame): DataFrame containing monthly reports.
-            outliers_churn (pd.DataFrame): DataFrame containing churn rate outliers.
-            outliers_attrition (pd.DataFrame): DataFrame containing attrition rate outliers.
         """
         # Convert 'Report Month' to datetime for plotting
         report_df["Report Month Date"] = pd.to_datetime(
@@ -235,36 +202,12 @@ class ChurnAttritionAnalyzer:
             label="Attrition Rate (%)",
         )
 
-        # Highlight outliers
-        if not outliers_churn.empty:
-            outliers_churn_dates = pd.to_datetime(
-                outliers_churn["Report Month"], format="%B %Y"
-            )
-            plt.scatter(
-                outliers_churn_dates,
-                outliers_churn["Churn Rate (%)"],
-                color="red",
-                label="Churn Rate Outliers",
-                zorder=5,
-            )
-        if not outliers_attrition.empty:
-            outliers_attrition_dates = pd.to_datetime(
-                outliers_attrition["Report Month"], format="%B %Y"
-            )
-            plt.scatter(
-                outliers_attrition_dates,
-                outliers_attrition["Attrition Rate (%)"],
-                color="orange",
-                label="Attrition Rate Outliers",
-                zorder=5,
-            )
-
         plt.xlabel("Month")
         plt.ylabel("Rate (%)")
         plt.title("Churn and Attrition Rates Over Time")
         plt.legend()
 
-        # Set major ticks to every 3 months
+        # Set major ticks to every 2 months
         ax = plt.gca()
         ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))  # Every 2 months
         ax.xaxis.set_major_formatter(
@@ -275,7 +218,6 @@ class ChurnAttritionAnalyzer:
         plt.xticks(rotation=45)
 
         plt.tight_layout()
-        plt.savefig("churn_attrition_rates.png")
         plt.show()
 
     def run_analysis(self):
@@ -292,30 +234,14 @@ class ChurnAttritionAnalyzer:
         print("Monthly Report:")
         print(report_df.tail())  # Display the last few reports
 
-        # Save the report to CSV
-        self.save_report(report_df)
-
-        # Detect outliers in Churn Rate and Attrition Rate
-        outliers_churn = self.detect_outliers(report_df, "Churn Rate (%)", method="IQR")
-        outliers_attrition = self.detect_outliers(
-            report_df, "Attrition Rate (%)", method="IQR"
-        )
-
-        # Report outliers
-        if not outliers_churn.empty:
-            print("\n=== Churn Rate Outliers Detected ===")
-            print(outliers_churn[["Report Month", "Churn Rate (%)"]])
-        else:
-            print("\nNo outliers detected in Churn Rate.")
-
-        if not outliers_attrition.empty:
-            print("\n=== Attrition Rate Outliers Detected ===")
-            print(outliers_attrition[["Report Month", "Attrition Rate (%)"]])
-        else:
-            print("\nNo outliers detected in Attrition Rate.")
+        # Instead of saving to CSV, get the CSV string
+        csv_string = self.get_csv_string(report_df)
+        print("\nCSV-formatted Report:")
+        print(csv_string)
+        
 
         # Generate charts
-        self.generate_charts(report_df, outliers_churn, outliers_attrition)
+        self.generate_charts(report_df)
 
 
 def main():
