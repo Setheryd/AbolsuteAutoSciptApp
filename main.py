@@ -82,7 +82,7 @@ monthly_items = sorted([
     "Expired NOAs",
     "Inventory Request",
     "Next Months Expired NOAs",
-    "Patient Attrition"
+    "Patient Attrition",
 ])
 monthly_items.insert(0, "Run All")  # Ensure "Run All" is at the top
 
@@ -298,6 +298,7 @@ class MainApp(QWidget):
             "Inventory Request": os.path.join(script_dir, "monthly_tasks", "inventory_request.py"),
             "Next Months Expired NOAs": os.path.join(script_dir, "monthly_tasks", "next_month_NOA_exp.py"),
             "Patient Attrition": os.path.join(script_dir, "monthly_tasks", "patient_attrition_email.py"),
+            "Employee Attrition": os.path.join(script_dir, "monthly_tasks", "employee_attrition_email.py")
         }
 
     def initialize_ui(self):
@@ -807,7 +808,8 @@ class MainApp(QWidget):
             "Active Admission Count by Service": "Active_Admission_by_Service.py",
             "View Billing Data" : "billing_files_extractor.py",
             "Patient Tenure" : "Patient_Tenure_by_Group.py",
-            "Patient Attrition" : "../monthly_tasks/patient_attrition.py"
+            "Patient Attrition" : "../monthly_tasks/patient_attrition.py",
+            "Employee Attrition" : "../monthly_tasks/employee_attrition.py"
         }
 
         button_container = QWidget()

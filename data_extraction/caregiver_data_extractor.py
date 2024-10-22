@@ -79,6 +79,7 @@ class CaregiverDataExtractor:
                     # Open the workbook and list sheets
                     try:
                         wb = excel.Workbooks.Open(file_path, False, True, None, self.password, '', True)
+                        workbooks[filename] = wb  # Keep track of opened workbooks
                     except Exception as e:
                         logging.error(f"Error opening file {file_path}: {e}")
                         print(f"Error opening file {file_path}: {e}")  # Debugging print
@@ -99,17 +100,46 @@ class CaregiverDataExtractor:
                         print(f"Error reading sheet 'Contractor_Employee' in {filename}: {e}")  # Debugging print
                         continue
 
-                    # Extract data from columns C, H, J
-                    for row in data[2:]:  # Skip header row
-                        contractor_name = row[2] if len(row) >= 3 else None  # Column C (3rd)
-                        date_of_hire = row[7] if len(row) >= 8 else None  # Column H (8th)
-                        term_date = row[9] if len(row) >= 10 else None  # Column J (10th)
+                    # Ensure there are at least two rows (assuming row 2 has headers)
+                    if len(data) < 2:
+                        logging.warning(f"Not enough rows in 'Contractor_Employee' sheet in '{filename}'")
+                        print(f"Not enough rows in 'Contractor_Employee' sheet in '{filename}'")  # Debugging print
+                        continue
+
+                    # Extract header row (assuming row 2 is at index 1)
+                    header_row = data[1]  # Row 2
+                    desired_headers = ["Last, First M", "DateofHire", "Termination date"]
+                    header_to_index = {}
+
+                    for idx, header in enumerate(header_row):
+                        if header in desired_headers:
+                            header_to_index[header] = idx
+
+                    # Check if all desired headers are found
+                    missing_headers = [h for h in desired_headers if h not in header_to_index]
+                    if missing_headers:
+                        logging.error(f"Missing headers {missing_headers} in 'Contractor_Employee' sheet in '{filename}'")
+                        print(f"Missing headers {missing_headers} in 'Contractor_Employee' sheet in '{filename}'")  # Debugging print
+                        continue
+
+                    logging.debug(f"Header indices: {header_to_index}")
+
+                    # Extract data from rows starting after the header
+                    for row_num, row in enumerate(data[2:], start=3):  # Starting at row 3
+                        # Handle cases where the row might be shorter than expected
+                        try:
+                            contractor_name = row[header_to_index["Last, First M"]] if len(row) > header_to_index["Last, First M"] else None
+                            date_of_hire = row[header_to_index["DateofHire"]] if len(row) > header_to_index["DateofHire"] else None
+                            term_date = row[header_to_index["Termination date"]] if len(row) > header_to_index["Termination date"] else None
+                        except Exception as e:
+                            logging.warning(f"Error accessing data in row {row_num} of '{filename}': {e}")
+                            contractor_name, date_of_hire, term_date = None, None, None
 
                         if contractor_name:
                             collected_data.append({
-                                "Contractor Name (C)": contractor_name,
-                                "Date of Hire (H)": date_of_hire,
-                                "Term Date (J)": term_date
+                                "Contractor Name": contractor_name,
+                                "Date of Hire": date_of_hire,
+                                "Term Date": term_date
                             })
 
             finally:
@@ -142,8 +172,8 @@ class CaregiverDataExtractor:
                     else:
                         return date_obj  # Return as is for other types
 
-                df["Date of Hire (H)"] = df["Date of Hire (H)"].apply(format_date)
-                df["Term Date (J)"] = df["Term Date (J)"].apply(format_date)
+                df["Date of Hire"] = df["Date of Hire"].apply(format_date)
+                df["Term Date"] = df["Term Date"].apply(format_date)
                 
                 return df
             else:
