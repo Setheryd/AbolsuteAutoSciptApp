@@ -246,6 +246,7 @@ class MainApp(QWidget):
         self.script_results = {}
         self.pending_scripts = []
         self.current_script_name = None
+        self.is_ability_mode = False
 
         # Timer for Timeout
         self.timer = QTimer(self)
@@ -359,7 +360,7 @@ class MainApp(QWidget):
                 color: white;
             }
             QPushButton:checked {
-                background-color: purple;
+                background-color: #7e07a0;
             }
         """
         )
@@ -399,6 +400,7 @@ class MainApp(QWidget):
             # Hide the Absolute tabs and show Ability tabs on the right side
             self.tab_widget.clear()  # Clear the existing tabs
             setup_ability_mode_tabs(self)  # Setup Ability tabs
+
         else:
             # Switch back to Absolute mode
             self.toggle_button.setText("Absolute")
@@ -440,13 +442,16 @@ class MainApp(QWidget):
             QTabBar::tab:!selected {
                 margin-top: 2px;
             }
+            
+            QPushButton:checked {
+                background-color: #207544;
+                color: white;
+            }
             """
             )
             self.setup_scripts_tab()  # Setup Absolute tabs
             self.setup_dashboard_tab()
             self.setup_graph_tab()
-
-    
 
     # ---------------------------------
     # Scripts Tab Setup
@@ -677,6 +682,7 @@ class MainApp(QWidget):
         Args:
             items (list): The list of sub-category items to create buttons for.
         """
+
         for item in items:
             button = QPushButton(item, self)
             button.setFixedWidth(300)  # Fixed width for consistency
@@ -798,19 +804,25 @@ class MainApp(QWidget):
         Args:
             splitter (QSplitter): The splitter to add the left-side widget to.
         """
-        custom_programs = {
-            "Active Patients per Month": "Admission_by_Month.py",
-            "View Patient Data": "patient_data_extractor.py",
-            "Active Contractor per Month": "Caregiver_by_Month.py",
-            "View Contractor Data": "caregiver_data_extractor.py",
-            "View Employee Records Data": "employee_records_data_extractor.py",
-            "Employee Records Hours": "Employee_Records_by_Month.py",
-            "Active Admission Count by Service": "Active_Admission_by_Service.py",
-            "View Billing Data" : "billing_files_extractor.py",
-            "Patient Tenure" : "Patient_Tenure_by_Group.py",
-            "Patient Attrition" : "../monthly_tasks/patient_attrition.py",
-            "Employee Attrition" : "../monthly_tasks/employee_attrition.py"
-        }
+
+        if self.is_ability_mode:
+            custom_programs = {
+                "Example Ability Script": "example_script.py"
+            }
+        else:
+            custom_programs = {
+                "Active Patients per Month": "Admission_by_Month.py",
+                "View Patient Data": "patient_data_extractor.py",
+                "Active Contractor per Month": "Caregiver_by_Month.py",
+                "View Contractor Data": "caregiver_data_extractor.py",
+                "View Employee Records Data": "employee_records_data_extractor.py",
+                "Employee Records Hours": "Employee_Records_by_Month.py",
+                "Active Admission Count by Service": "Active_Admission_by_Service.py",
+                "View Billing Data" : "billing_files_extractor.py",
+                "Patient Tenure" : "Patient_Tenure_by_Group.py",
+                "Patient Attrition" : "../monthly_tasks/patient_attrition.py",
+                "Employee Attrition" : "../monthly_tasks/employee_attrition.py"
+            }
 
         button_container = QWidget()
         button_layout = QVBoxLayout(button_container)
@@ -969,13 +981,28 @@ class MainApp(QWidget):
 
         # X-axis Selection
         self.x_axis_label = QLabel("Select X-axis:")
-        self.x_axis_label.setStyleSheet("""
-            QLabel {
-                font-size: 14pt;
-                font-weight: bold;
-                color: #207544;
-            }
-        """)
+
+        if self.is_ability_mode:
+            self.x_axis_label.setStyleSheet(
+                """
+                QLabel {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #7e07a0;
+                }
+            """
+            )
+        else:
+            self.x_axis_label.setStyleSheet(
+                """
+                QLabel {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #207544;
+                }
+            """
+            )
+
         self.x_axis_combo = QComboBox(self)
         self.x_axis_combo.setStyleSheet("""
             QComboBox {
@@ -988,13 +1015,27 @@ class MainApp(QWidget):
 
         # Y-axis Selection
         self.y_axis_label = QLabel("Select Y-axis:")
-        self.y_axis_label.setStyleSheet("""
-            QLabel {
-                font-size: 14pt;
-                font-weight: bold;
-                color: #207544;
-            }
-        """)
+
+        if self.is_ability_mode:
+            self.y_axis_label.setStyleSheet(
+                """
+                QLabel {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #7e07a0;
+                }
+            """
+            )
+        else:
+            self.y_axis_label.setStyleSheet(
+                """
+                QLabel {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #207544;
+                }
+            """
+            )
         self.y_axis_combo = QComboBox(self)
         self.y_axis_combo.setStyleSheet("""
             QComboBox {
@@ -1007,13 +1048,28 @@ class MainApp(QWidget):
 
         # Label SpinBox
         self.label_spinbox_label = QLabel("Number of X-axis labels to display:")
-        self.label_spinbox_label.setStyleSheet("""
-            QLabel {
-                font-size: 14pt;
-                font-weight: bold;
-                color: #207544;
-            }
-        """)
+
+        if self.is_ability_mode:
+            self.label_spinbox_label.setStyleSheet(
+                """
+                QLabel {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #7e07a0;
+                }
+            """
+            )
+        else:
+            self.label_spinbox_label.setStyleSheet(
+                """
+                QLabel {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #207544;
+                }
+            """
+            )
+
         self.label_spinbox = QSpinBox(self)
         self.label_spinbox.setRange(1, 20)
         self.label_spinbox.setValue(6)
@@ -1033,7 +1089,26 @@ class MainApp(QWidget):
         # Plot Graph Button
         self.plot_button = QPushButton("Plot Graph", self)
         self.plot_button.setFixedWidth(150)
-        self.plot_button.setStyleSheet("""
+
+        if self.is_ability_mode:
+            self.plot_button.setStyleSheet(
+                """
+            QPushButton {
+                background-color: #7e07a0;
+                border: none;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 14pt;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #9b32bf;
+            }
+        """
+            )
+        else:
+            self.plot_button.setStyleSheet(
+                """
             QPushButton {
                 background-color: #207544;
                 border: none;
@@ -1043,9 +1118,10 @@ class MainApp(QWidget):
                 color: white;
             }
             QPushButton:hover {
-                background-color: #89A4FF;
+                background-color: #28a05e;
             }
-        """)
+        """
+            )
         self.plot_button.clicked.connect(self.plot_graph)
         controls_layout.addWidget(self.plot_button, alignment=Qt.AlignCenter)
 
@@ -1601,7 +1677,6 @@ class MainApp(QWidget):
                 # Highlight the active button
                 widget.button.setStyleSheet("""
                     QPushButton {
-                        background-color: #207544;
                         border: 1px solid #cccccc;
                         border-radius: 8px;
                         padding: 10px;
@@ -1612,6 +1687,26 @@ class MainApp(QWidget):
                         background-color: #89a4FF;
                     }
                 """)
+
+                if self.is_ability_mode:
+
+                    widget.button.setStyleSheet(
+                        """
+                    QPushButton {
+                        background-color: #7e07a0;
+                    }
+                        """
+                    )
+                else:
+
+                    widget.button.setStyleSheet(
+                        """
+                    QPushButton {
+                        background-color: #207544;
+                    }
+                        """
+                    )
+
                 widget.button.setChecked(True)
             else:
                 # Reset other buttons to default style
