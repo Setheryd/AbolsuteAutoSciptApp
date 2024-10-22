@@ -227,19 +227,23 @@ class ChurnAttritionAnalyzer:
             report_df["Report Month"], format="%B %Y"
         )
 
-        # Plot Churn and Attrition Rates
+        # Plot Churn and Attrition Rates with specified colors
         plt.figure(figsize=(14, 7))
         plt.plot(
             report_df["Report Month Date"],
             report_df["Churn Rate (%)"],
             marker="o",
             label="Churn Rate (%)",
+            color="#006400",  # Dark green for Churn Rate
+            linewidth=2
         )
         plt.plot(
             report_df["Report Month Date"],
             report_df["Attrition Rate (%)"],
             marker="o",
             label="Attrition Rate (%)",
+            color="#32CD32",  # Lighter green for Attrition Rate
+            linewidth=2
         )
 
         plt.xlabel("Month")
@@ -267,6 +271,7 @@ class ChurnAttritionAnalyzer:
         plt.close()  # Close the figure to free memory
 
         return chart_filename
+
 
     def run_analysis(self):
         """

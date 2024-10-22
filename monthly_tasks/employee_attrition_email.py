@@ -165,8 +165,9 @@ def send_email(report, signature, chart_filename):
         logging.error(f"Chart image not found at path: {chart_filename}")
 
     # Set email parameters
-    mail.To = 'luke.kitchel@absolutecaregivers.com'
-    mail.Subject = 'Monthly Churn and Attrition Report'
+    mail.To = "alexander.nazarov@absolutecaregivers.com"
+    mail.CC = "luke.kitchel@absolutecaregivers.com; seth.riley@absolutecaregivers.com"
+    mail.Subject = "Employee Monthly Churn and Attrition Report"
     mail.Display()  # Use .Send() to send it directly
 
     print("Email prepared successfully.")
