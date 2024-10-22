@@ -821,7 +821,8 @@ class MainApp(QWidget):
                 "View Billing Data" : "billing_files_extractor.py",
                 "Patient Tenure" : "Patient_Tenure_by_Group.py",
                 "Patient Attrition" : "../monthly_tasks/patient_attrition.py",
-                "Employee Attrition" : "../monthly_tasks/employee_attrition.py"
+                "Employee Attrition" : "../monthly_tasks/employee_attrition.py",
+                "Paysource Patient Count" :"Paysource_Patient_count.py"
             }
 
         button_container = QWidget()
