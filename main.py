@@ -47,6 +47,9 @@ from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
+
+
 # =============================================================================
 # Constants
 # =============================================================================
@@ -301,7 +304,8 @@ class MainApp(QWidget):
         """
         Initializes and sets up all UI components.
         """
-        # Define the custom style sheet for tabs
+        # Create a layout for the entire window
+
         tab_style = """
             QTabWidget::pane {
                 border: none;
@@ -326,9 +330,108 @@ class MainApp(QWidget):
             }
 
             QTabBar::tab:selected {
-                background: #A0C4FF; /* Same as the header color */
+                background: #207544;
                 font-weight: bold;
-                color: #d9e6f2; /* Slightly darkened text color */
+                color: #d9e6f2;
+                color: white;
+                margin-top: 0px;
+            }
+
+            QTabBar::tab:!selected {
+                margin-top: 2px;
+            }
+        """
+
+        self.main_layout = QVBoxLayout(self)
+
+        # Create a toggle button for switching between Absolute and Ability
+        self.toggle_button = QPushButton("Absolute", self)
+        self.toggle_button.setCheckable(True)
+        self.toggle_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #207544;
+                border-radius: 15px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: bold;
+                color: white;
+            }
+            QPushButton:checked {
+                background-color: purple;
+            }
+        """
+        )
+        self.toggle_button.clicked.connect(self.switch_mode)
+
+        # Add the toggle button to the top of the layout
+        self.main_layout.addWidget(self.toggle_button, alignment=Qt.AlignCenter)
+
+        # Create a QTabWidget for switching between tabs
+        self.tab_widget = QTabWidget(self)
+
+        # Apply the custom style sheet to the QTabWidget
+        self.tab_widget.setStyleSheet(tab_style)
+
+        # Setup the default Absolute side with tabs on the left
+        self.setup_scripts_tab()
+        self.setup_dashboard_tab()
+        self.setup_graph_tab()
+
+        # Add the tab widget to the layout
+        self.main_layout.addWidget(self.tab_widget)
+
+        self.setLayout(self.main_layout)
+
+        # Initial state is Absolute
+        self.is_ability_mode = False
+
+    def switch_mode(self):
+        """
+        Switches between 'Absolute' mode and 'Ability' mode.
+        """
+        if self.toggle_button.isChecked():
+            # Switch to Ability mode
+            self.toggle_button.setText("Ability")
+            self.is_ability_mode = True
+
+            # Hide the Absolute tabs and show Ability tabs on the right side
+            self.tab_widget.clear()  # Clear the existing tabs
+            setup_ability_mode_tabs(self)  # Setup Ability tabs
+        else:
+            # Switch back to Absolute mode
+            self.toggle_button.setText("Absolute")
+            self.is_ability_mode = False
+
+            # Hide the Ability tabs and show Absolute tabs on the left side
+            self.tab_widget.clear()  # Clear the existing tabs
+            self.tab_widget.setStyleSheet(
+                """QTabWidget::pane {
+                border: none;
+                background-color: #2e2e2e;
+            }
+
+            QTabBar::tab {
+                background: #3c3c3c;
+                color: white;
+                padding: 10px 20px;
+                border: 1px solid #444;
+                border-bottom: none;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+                margin-right: 2px;
+                font-family: "Segoe UI", sans-serif;
+                font-size: 14px;
+            }
+
+            QTabBar::tab:hover {
+                background: #505050;
+            }
+
+            QTabBar::tab:selected {
+                background: #207544;
+                font-weight: bold;
+                color: #d9e6f2;
                 color: white;
                 margin-top: 0px;
             }
@@ -337,21 +440,12 @@ class MainApp(QWidget):
                 margin-top: 2px;
             }
             """
+            )
+            self.setup_scripts_tab()  # Setup Absolute tabs
+            self.setup_dashboard_tab()
+            self.setup_graph_tab()
 
-        # Create a QTabWidget for switching between tabs
-        self.tab_widget = QTabWidget(self)
-
-        # Apply the custom style sheet to the QTabWidget
-        self.tab_widget.setStyleSheet(tab_style)
-
-        # Setup Individual Tabs
-        self.setup_scripts_tab()
-        self.setup_dashboard_tab()
-        self.setup_graph_tab()
-
-        main_layout = QVBoxLayout(self)
-        main_layout.addWidget(self.tab_widget)
-        self.setLayout(main_layout)
+    
 
     # ---------------------------------
     # Scripts Tab Setup
@@ -375,7 +469,7 @@ class MainApp(QWidget):
             QLabel {
                 font-size: 18pt;
                 font-weight: bold;
-                color: #A0C4FF;
+                color: #207544;
             }
         """)
         self.category_layout.addWidget(categories_header, alignment=Qt.AlignCenter)
@@ -409,7 +503,7 @@ class MainApp(QWidget):
             QLabel {
                 font-size: 18pt;
                 font-weight: bold;
-                color: #A0C4FF; 
+                color: #207544; 
                 margin-top: 6px;
             }
         """)
@@ -625,7 +719,7 @@ class MainApp(QWidget):
                     background-color: #e6e6e6;
                 }
                 QPushButton:checked {
-                    background-color: #a0c4ff;
+                    background-color: #207544;
                     border: 1px solid #89a4ff;
                     color: black;
                 }
@@ -760,7 +854,7 @@ class MainApp(QWidget):
                 color: black;
             }
             QTableWidget::item:selected {
-                background-color: #A0C4FF; /* Custom color for selected cells */
+                background-color: #207544; /* Custom color for selected cells */
                 color: black; /* Text color for selected cells */
                
             }
@@ -785,7 +879,7 @@ class MainApp(QWidget):
                 border: none;
             }
             QProgressBar::chunk {
-                background-color: #A0C4FF;
+                background-color: #207544;
             }
         """)
 
@@ -795,7 +889,7 @@ class MainApp(QWidget):
         self.retrieving_data_label.setStyleSheet(
             """
             QLabel {
-                color: #A0C4FF;
+                color: #207544;
                 font-size: 16pt;
                 font-weight: bold;
             }
@@ -832,7 +926,6 @@ class MainApp(QWidget):
 
         # Add Buttons to Layout
         bottom_buttons_layout.addWidget(self.save_dataframe_button)
-        
 
         # Add Bottom Buttons Layout to Secondary Layout
         self.secondary_layout.addLayout(bottom_buttons_layout)
@@ -878,7 +971,7 @@ class MainApp(QWidget):
             QLabel {
                 font-size: 14pt;
                 font-weight: bold;
-                color: #A0C4FF;
+                color: #207544;
             }
         """)
         self.x_axis_combo = QComboBox(self)
@@ -897,7 +990,7 @@ class MainApp(QWidget):
             QLabel {
                 font-size: 14pt;
                 font-weight: bold;
-                color: #A0C4FF;
+                color: #207544;
             }
         """)
         self.y_axis_combo = QComboBox(self)
@@ -916,7 +1009,7 @@ class MainApp(QWidget):
             QLabel {
                 font-size: 14pt;
                 font-weight: bold;
-                color: #A0C4FF;
+                color: #207544;
             }
         """)
         self.label_spinbox = QSpinBox(self)
@@ -940,7 +1033,7 @@ class MainApp(QWidget):
         self.plot_button.setFixedWidth(150)
         self.plot_button.setStyleSheet("""
             QPushButton {
-                background-color: #A0C4FF;
+                background-color: #207544;
                 border: none;
                 border-radius: 8px;
                 padding: 10px;
@@ -1423,7 +1516,7 @@ class MainApp(QWidget):
             y_data = self.df[y_column]
 
             # Scatter Plot
-            scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True, color='#A0C4FF')
+            scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True, color='#207544')
 
             # Set Axis Labels
             self.canvas.ax.set_xlabel(x_column)
@@ -1497,7 +1590,7 @@ class MainApp(QWidget):
                         background-color: #e6e6e6;
                     }
                     QPushButton:checked {
-                        background-color: #a0c4ff;
+                        background-color: #207544;
                         border: 1px solid #89a4ff;
                         color: black;
                     }
@@ -1507,7 +1600,7 @@ class MainApp(QWidget):
                 # Highlight the active button
                 widget.button.setStyleSheet("""
                     QPushButton {
-                        background-color: #A0C4FF;
+                        background-color: #207544;
                         border: 1px solid #cccccc;
                         border-radius: 8px;
                         padding: 10px;
@@ -1534,7 +1627,7 @@ class MainApp(QWidget):
                         background-color: #e6e6e6;
                     }
                     QPushButton:checked {
-                        background-color: #a0c4ff;
+                        background-color: #207544;
                         border: 1px solid #89a4ff;
                         color: black;
                     }
@@ -1702,7 +1795,7 @@ def main():
         background-color: #dcdcdc;
     }
     QPushButton:checked {
-        background-color: #a0c4ff;
+        background-color: #207544;
         border: 2px solid #89a4ff;
         color: black;
     }
@@ -1715,5 +1808,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
