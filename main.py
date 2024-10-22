@@ -246,6 +246,7 @@ class MainApp(QWidget):
         self.script_results = {}
         self.pending_scripts = []
         self.current_script_name = None
+        self.is_ability_mode = False
 
         # Timer for Timeout
         self.timer = QTimer(self)
@@ -359,7 +360,7 @@ class MainApp(QWidget):
                 color: white;
             }
             QPushButton:checked {
-                background-color: purple;
+                background-color: #7e07a0;
             }
         """
         )
@@ -399,6 +400,7 @@ class MainApp(QWidget):
             # Hide the Absolute tabs and show Ability tabs on the right side
             self.tab_widget.clear()  # Clear the existing tabs
             setup_ability_mode_tabs(self)  # Setup Ability tabs
+
         else:
             # Switch back to Absolute mode
             self.toggle_button.setText("Absolute")
@@ -440,13 +442,16 @@ class MainApp(QWidget):
             QTabBar::tab:!selected {
                 margin-top: 2px;
             }
+            
+            QPushButton:checked {
+                background-color: #207544;
+                color: white;
+            }
             """
             )
             self.setup_scripts_tab()  # Setup Absolute tabs
             self.setup_dashboard_tab()
             self.setup_graph_tab()
-
-    
 
     # ---------------------------------
     # Scripts Tab Setup
@@ -677,6 +682,8 @@ class MainApp(QWidget):
         Args:
             items (list): The list of sub-category items to create buttons for.
         """
+        
+        
         for item in items:
             button = QPushButton(item, self)
             button.setFixedWidth(300)  # Fixed width for consistency
@@ -1601,7 +1608,6 @@ class MainApp(QWidget):
                 # Highlight the active button
                 widget.button.setStyleSheet("""
                     QPushButton {
-                        background-color: #207544;
                         border: 1px solid #cccccc;
                         border-radius: 8px;
                         padding: 10px;
@@ -1612,6 +1618,26 @@ class MainApp(QWidget):
                         background-color: #89a4FF;
                     }
                 """)
+
+                if self.is_ability_mode:
+                  
+                    widget.button.setStyleSheet(
+                        """
+                    QPushButton {
+                        background-color: #7e07a0;
+                    }
+                        """
+                    )
+                else:
+                   
+                    widget.button.setStyleSheet(
+                        """
+                    QPushButton {
+                        background-color: #207544;
+                    }
+                        """
+                    )
+
                 widget.button.setChecked(True)
             else:
                 # Reset other buttons to default style
