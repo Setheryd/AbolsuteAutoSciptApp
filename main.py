@@ -722,7 +722,7 @@ class MainApp(QWidget):
                 QPushButton:checked {
                     background-color: #207544;
                     border: 1px solid #89a4ff;
-                    color: black;
+                    color: white;
                 }
             """)
             button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -857,7 +857,7 @@ class MainApp(QWidget):
             }
             QTableWidget::item:selected {
                 background-color: #207544; /* Custom color for selected cells */
-                color: black; /* Text color for selected cells */
+                color: white; /* Text color for selected cells */
                
             }
             QTableWidget::item {
@@ -1593,8 +1593,7 @@ class MainApp(QWidget):
                     }
                     QPushButton:checked {
                         background-color: #207544;
-                        border: 1px solid #89a4ff;
-                        color: black;
+                        color: white;
                     }
                 """)
                 widget.button.setChecked(False)
@@ -1607,7 +1606,7 @@ class MainApp(QWidget):
                         border-radius: 8px;
                         padding: 10px;
                         text-align: center;
-                        color: black;
+                        color: white;
                     }
                     QPushButton:hover {
                         background-color: #89a4FF;
@@ -1630,8 +1629,7 @@ class MainApp(QWidget):
                     }
                     QPushButton:checked {
                         background-color: #207544;
-                        border: 1px solid #89a4ff;
-                        color: black;
+                        color: white;
                     }
                 """)
                 widget.button.setChecked(False)
@@ -1798,8 +1796,7 @@ def main():
     }
     QPushButton:checked {
         background-color: #207544;
-        border: 2px solid #89a4ff;
-        color: black;
+        color: white;
     }
     """
     app.setStyleSheet(button_style)
