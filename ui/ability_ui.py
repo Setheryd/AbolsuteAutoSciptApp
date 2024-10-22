@@ -213,7 +213,7 @@ def ability_setup_scripts_tab(self):
     self.animation_label = QLabel(self)
     self.animation_label.setFixedSize(100, 100)
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    loading_gif_path = os.path.join(script_dir, "resources", "loading.gif")
+    loading_gif_path = os.path.join(script_dir, "../resources", "loading.gif")
     if not os.path.exists(loading_gif_path):
         print(f"Loading GIF not found at {loading_gif_path}. Please ensure the file exists.")
     self.animation_movie = QMovie(loading_gif_path)
