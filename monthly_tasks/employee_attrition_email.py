@@ -11,12 +11,25 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Get the parent directory of the current script
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+def get_resource_path(relative_path):
+    """Get the absolute path to the resource, works for PyInstaller executable."""
+    try:
+        # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # If not running as an executable, use the current script directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
+# Get the parent directory using get_resource_path
+parent_dir = get_resource_path(os.path.join(os.pardir))
 
 # Add the data_extraction directory to the system path
 sys.path.append(os.path.join(parent_dir, "data_extraction"))
+
 
 def save_report_and_chart(analyzer):
     # Run the analysis

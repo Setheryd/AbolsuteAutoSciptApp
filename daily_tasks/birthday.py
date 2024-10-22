@@ -26,6 +26,19 @@ def get_current_username():
         logging.error(f"Failed to get the current username: {e}")
         return None
 
+
+def get_resource_path(relative_path):
+    """Get the absolute path to the resource, works for PyInstaller executable."""
+    try:
+        # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # If not running as an executable, use the current script directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
 def find_employee_demographics_file(base_path):
     """
     Recursively searches for 'Absolute Employee Demographics.xlsm' within
@@ -388,32 +401,32 @@ def main():
     # Set the password for the Excel file here
     EXCEL_PASSWORD = "abs$1004$N"  # <-- Replace with your actual password
     # ============================
-    
+
     username = get_current_username()
     if not username:
         return
-    
+
     base_path = f"C:\\Users\\{username}\\OneDrive - Ability Home Health, LLC\\"
     demographics_path = find_employee_demographics_file(base_path)
     if not demographics_path:
         logging.error("Employee Demographics file not found.")
         print("Employee Demographics file not found.")
         return
-    
+
     logging.info(f"Employee Demographics file found at: {demographics_path}")
     print(f"Employee Demographics file found at: {demographics_path}")
-    
+
     # Ensure that the password is provided
     if not EXCEL_PASSWORD or EXCEL_PASSWORD == "your_excel_password_here":
         logging.error("Please set the Excel file password in the script before running.")
         print("Please set the Excel file password in the script before running.")
         return
-    
+
     # ====== Determine Relevant Dates ======
     today = datetime.datetime.today()
     weekday = today.weekday()  # Monday is 0 and Sunday is 6
     date_list = []
-    
+
     if weekday == 0:  # If today is Monday
         # Calculate dates for Saturday and Sunday
         saturday = today - datetime.timedelta(days=2)
@@ -434,23 +447,23 @@ def main():
         logging.info("Today is not Monday. Including only today's birthdays.")
         print("Today is not Monday. Including only today's birthdays.")
     # ======================================
-    
+
     birthdays = get_relevant_birthdays(demographics_path, EXCEL_PASSWORD, date_list)
     if not birthdays:
         logging.info("No birthdays found for the specified dates.")
         print("No birthdays found for the specified dates.")
         return
-    
+
     # ====== Locate the PowerPoint template using hardcoded relative path ======
     # Assuming the script is located in 'AbolsuteAutoSciptApp\daily_tasks\birthday.py'
     # and the PPT is in 'AbolsuteAutoSciptApp\resources\Birthday_PPT.pptx'
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    ppt_path = os.path.join(script_dir, '..', 'resources', 'Birthday_PPT.pptx')  # Relative path up one level
-    ppt_path = os.path.abspath(ppt_path)  # Convert to absolute path
-    
+    ppt_path = get_resource_path(
+        os.path.join("..", "resources", "Birthday_PPT.pptx")
+    )  # Relative path up one level
+
     # For debugging, print the constructed path
     print(f"Looking for PowerPoint template at: {ppt_path}")
-    
+
     if not os.path.exists(ppt_path):
         logging.error(f"PowerPoint file does not exist at: {ppt_path}")
         print(f"PowerPoint file does not exist at: {ppt_path}")
@@ -459,7 +472,7 @@ def main():
         logging.info(f"PowerPoint file found at: {ppt_path}")
         print(f"PowerPoint file found at: {ppt_path}")
     # ======================================================================
-    
+
     try:
         ppt_app = win32.DispatchEx("PowerPoint.Application")
         # ppt_app.Visible = False  # Removed this line to prevent errors
@@ -469,7 +482,7 @@ def main():
         logging.error(f"Failed to open PowerPoint presentation: {e}")
         print(f"Failed to open PowerPoint presentation: {e}")
         return
-    
+
     # Retrieve the user's signature
     signature_html = get_default_signature()
     if signature_html:
@@ -481,7 +494,7 @@ def main():
     else:
         signature_images = []
         signature_html = ""
-    
+
     for employee in birthdays:
         logging.info(f"Processing birthday for {employee['Last, First M']}")
         print(f"\nProcessing birthday for {employee['Last, First M']}")
@@ -498,7 +511,7 @@ def main():
         else:
             logging.error(f"Failed to create image for {employee['Last, First M']}")
             print(f"Failed to create image for {employee['Last, First M']}")
-    
+
     # Close PowerPoint after processing all employees
     try:
         presentation.Close()
@@ -508,7 +521,7 @@ def main():
     except Exception as e:
         logging.error(f"Failed to close PowerPoint: {e}")
         print(f"Failed to close PowerPoint: {e}")
-    
+
     logging.info("Birthday notifications completed.")
     print("Birthday notifications completed.")
 

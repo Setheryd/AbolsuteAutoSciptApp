@@ -126,6 +126,17 @@ class ScriptButtonWidget(QWidget):
         layout.setSpacing(10)
         self.setLayout(layout)
 
+    def get_resource_path(self, relative_path):
+        """Get the absolute path to the resource, works for PyInstaller executable."""
+        try:
+            # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+            base_path = sys._MEIPASS
+        except AttributeError:
+            # If not running as an executable, use the current script directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+
+        return os.path.join(base_path, relative_path)
+
     def make_pixmap_white(self, pixmap):
         """
         Returns a white-tinted version of the given pixmap.
@@ -148,7 +159,7 @@ class ScriptButtonWidget(QWidget):
             return
 
         # Construct absolute path to the icon
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
         icon_mapping = {
             "pending": "pending.png",
             "running": "running.png",
@@ -156,7 +167,7 @@ class ScriptButtonWidget(QWidget):
             "failed": "failed.png",
         }
         icon_file = icon_mapping.get(self.status, "")
-        icon_path = os.path.join(script_dir, "resources", icon_file)
+        icon_path = self.get_resource_path(os.path.join("resources", icon_file))
 
         if os.path.exists(icon_path):
             pixmap = QPixmap(icon_path)
@@ -288,69 +299,85 @@ class MainApp(QWidget):
         screen = QGuiApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
         self.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height() - 20)
+        
+    def get_resource_path(self, relative_path):
+        """Get the absolute path to the resource, works for PyInstaller executable."""
+        try:
+            # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+            base_path = sys._MEIPASS
+        except AttributeError:
+            # If not running as an executable, use the current script directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        
+        return os.path.join(base_path, relative_path)
 
     def initialize_scripts_mapping(self):
         """
         Maps script names to their corresponding file paths.
         """
-        script_dir = os.path.dirname(os.path.abspath(__file__))
         self.scripts = {
             # Daily Scripts
-            "Employee Birthday Email": os.path.join(
-                script_dir, "daily_tasks", "birthday.py"
+            "Employee Birthday Email": self.get_resource_path(
+                os.path.join("daily_tasks", "birthday.py")
             ),
             # Weekly Scripts
-            "Caregiver ID Exp": os.path.join(
-                script_dir, "weekly_tasks", "in_emp_id_exp.py"
+            "Caregiver ID Exp": self.get_resource_path(
+                os.path.join("weekly_tasks", "in_emp_id_exp.py")
             ),
-            "IN Emp EVAL EXP": os.path.join(
-                script_dir, "weekly_tasks", "indy_emp_eval.py"
+            "IN Emp EVAL EXP": self.get_resource_path(
+                os.path.join("weekly_tasks", "indy_emp_eval.py")
             ),
-            "IN Emp In-Services EXP": os.path.join(
-                script_dir, "weekly_tasks", "in_emp_inservices_exp.py"
+            "IN Emp In-Services EXP": self.get_resource_path(
+                os.path.join("weekly_tasks", "in_emp_inservices_exp.py")
             ),
-            "IN PAT SUP EXP": os.path.join(
-                script_dir, "weekly_tasks", "in_pat_sup_exp.py"
+            "IN PAT SUP EXP": self.get_resource_path(
+                os.path.join("weekly_tasks", "in_pat_sup_exp.py")
             ),
-            "Pending Admission": os.path.join(
-                script_dir, "weekly_tasks", "pending_admission.py"
+            "Pending Admission": self.get_resource_path(
+                os.path.join("weekly_tasks", "pending_admission.py")
             ),
-            "Pending Caregiver Assignment": os.path.join(
-                script_dir, "weekly_tasks", "pending_caregiver_assignment.py"
+            "Pending Caregiver Assignment": self.get_resource_path(
+                os.path.join("weekly_tasks", "pending_caregiver_assignment.py")
             ),
-            "Pending IHCC Admission": os.path.join(
-                script_dir, "weekly_tasks", "pending_IHCC_admission.py"
+            "Pending IHCC Admission": self.get_resource_path(
+                os.path.join("weekly_tasks", "pending_IHCC_admission.py")
             ),
-            "Pending PERS Installation": os.path.join(
-                script_dir, "weekly_tasks", "pending_PERS_Installation.py"
+            "Pending PERS Installation": self.get_resource_path(
+                os.path.join("weekly_tasks", "pending_PERS_Installation.py")
             ),
-            "SB EMP EVAL EXP": os.path.join(
-                script_dir, "weekly_tasks", "sb_emp_eval.py"
+            "SB EMP EVAL EXP": self.get_resource_path(
+                os.path.join("weekly_tasks", "sb_emp_eval.py")
             ),
-            "SB Emp Inservices Exp": os.path.join(
-                script_dir, "weekly_tasks", "sb_emp_inservices_exp.py"
+            "SB Emp Inservices Exp": self.get_resource_path(
+                os.path.join("weekly_tasks", "sb_emp_inservices_exp.py")
             ),
-            "SB ID EXP": os.path.join(script_dir, "weekly_tasks", "sb_emp_id_exp.py"),
-            "SB PAT SUP EXP": os.path.join(
-                script_dir, "weekly_tasks", "sb_pat_sup_exp.py"
+            "SB ID EXP": self.get_resource_path(
+                os.path.join("weekly_tasks", "sb_emp_id_exp.py")
+            ),
+            "SB PAT SUP EXP": self.get_resource_path(
+                os.path.join("weekly_tasks", "sb_pat_sup_exp.py")
             ),
             # Monthly Scripts
-            "Age Notification": os.path.join(script_dir, "monthly_tasks", "age.py"),
-            "Employee Attrition": os.path.join(
-                script_dir, "monthly_tasks", "employee_attrition.py"
+            "Age Notification": self.get_resource_path(
+                os.path.join("monthly_tasks", "age.py")
             ),
-            "Expired NOAs": os.path.join(script_dir, "monthly_tasks", "NOA_exp.py"),
-            "Inventory Request": os.path.join(
-                script_dir, "monthly_tasks", "inventory_request.py"
+            "Employee Attrition": self.get_resource_path(
+                os.path.join("monthly_tasks", "employee_attrition.py")
             ),
-            "Next Months Expired NOAs": os.path.join(
-                script_dir, "monthly_tasks", "next_month_NOA_exp.py"
+            "Expired NOAs": self.get_resource_path(
+                os.path.join("monthly_tasks", "NOA_exp.py")
             ),
-            "Patient Attrition": os.path.join(
-                script_dir, "monthly_tasks", "patient_attrition_email.py"
+            "Inventory Request": self.get_resource_path(
+                os.path.join("monthly_tasks", "inventory_request.py")
             ),
-            "Employee Attrition": os.path.join(
-                script_dir, "monthly_tasks", "employee_attrition_email.py"
+            "Next Months Expired NOAs": self.get_resource_path(
+                os.path.join("monthly_tasks", "next_month_NOA_exp.py")
+            ),
+            "Patient Attrition": self.get_resource_path(
+                os.path.join("monthly_tasks", "patient_attrition_email.py")
+            ),
+            "Employee Attrition": self.get_resource_path(
+                os.path.join("monthly_tasks", "employee_attrition_email.py")
             ),
         }
 
@@ -611,12 +638,13 @@ class MainApp(QWidget):
         # Animation Label
         self.animation_label = QLabel(self)
         self.animation_label.setFixedSize(100, 100)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        loading_gif_path = os.path.join(script_dir, "resources", "loading.gif")
+
+        # Use the get_resource_path method to handle paths correctly
+        loading_gif_path = self.get_resource_path(os.path.join("resources", "loading.gif"))
+
         if not os.path.exists(loading_gif_path):
-            print(
-                f"Loading GIF not found at {loading_gif_path}. Please ensure the file exists."
-            )
+            print(f"Loading GIF not found at {loading_gif_path}. Please ensure the file exists.")
+
         self.animation_movie = QMovie(loading_gif_path)
         self.animation_label.setMovie(self.animation_movie)
         self.animation_label.setAlignment(Qt.AlignCenter)
@@ -1902,16 +1930,13 @@ class MainApp(QWidget):
             file_name (str): The name of the script file to execute.
         """
 
-        def execute_script():
+        def execute_script(file_name):
             try:
                 # Show loading bar and blur effect
                 self.toggle_loading(True)
 
-                # Construct the full path to the script
-                script_dir = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "data_extraction"
-                )
-                script_path = os.path.join(script_dir, file_name)
+                # Construct the full path to the script using get_resource_path
+                script_path = self.get_resource_path(os.path.join("data_extraction", file_name))
 
                 # Check if the script exists
                 if not os.path.exists(script_path):
@@ -1961,7 +1986,7 @@ class MainApp(QWidget):
                 self.toggle_loading(False)
 
         # Start the script execution in a separate thread
-        threading.Thread(target=execute_script).start()
+        threading.Thread(target=lambda: execute_script(file_name)).start()
 
     def toggle_loading(self, is_loading):
         """
