@@ -84,7 +84,16 @@ def main():
     waiver_mce_counts = eligible_df['Waiver/MCE'].value_counts().reset_index()
     waiver_mce_counts.columns = ['Waiver/MCE', 'Count']
 
-    # Print the counts in comma-delimited (CSV) format
+    # Sort the DataFrame from largest to smallest count
+    waiver_mce_counts = waiver_mce_counts.sort_values(by='Count', ascending=False).reset_index(drop=True)
+
+    # Calculate the total count for percentage calculation
+    total_count = waiver_mce_counts['Count'].sum()
+
+    # Add a 'Percent of Total' column
+    waiver_mce_counts['Percent of Total'] = (waiver_mce_counts['Count'] / total_count * 100).round(2)
+
+    # Print the counts with percentages in comma-delimited (CSV) format
     print(waiver_mce_counts.to_csv(index=False))
 
 if __name__ == "__main__":
