@@ -183,13 +183,16 @@ class ScriptButtonWidget(QWidget):
 
 
 class MplCanvas(FigureCanvas):
-    """
-    Matplotlib Canvas to embed plots within the Qt application.
-    """
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        self.fig, self.ax = plt.subplots(figsize=(width, height), dpi=dpi)
-        super().__init__(self.fig)
-
+    def __init__(self, parent=None, width=10, height=6, dpi=100):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.ax = self.fig.add_subplot(111)
+        super(MplCanvas, self).__init__(self.fig)
+        
+        # Fix the size based on figsize and dpi
+        self.setFixedSize(width * dpi, height * dpi)
+        
+        # Prevent the canvas from expanding
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
 class CustomTableWidget(QTableWidget):
     """
@@ -980,35 +983,35 @@ class MainApp(QWidget):
         controls_layout.setContentsMargins(20, 20, 20, 20)
         controls_layout.setSpacing(15)
 
+        # Helper function to set label styles
+        def set_label_style(label):
+            color = "#7e07a0" if self.is_ability_mode else "#207544"
+            label.setStyleSheet(
+                f"""
+                QLabel {{
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: {color};
+                }}
+                """
+            )
+
         # X-axis Selection
         self.x_axis_label = QLabel("Select X-axis:")
-
-        if self.is_ability_mode:
-            self.x_axis_label.setStyleSheet(
-                """
-                QLabel {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: #7e07a0;
-                }
-            """
-            )
-        else:
-            self.x_axis_label.setStyleSheet(
-                """
-                QLabel {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: #207544;
-                }
-            """
-            )
+        set_label_style(self.x_axis_label)
 
         self.x_axis_combo = QComboBox(self)
         self.x_axis_combo.setStyleSheet("""
             QComboBox {
                 padding: 5px;
                 font-size: 12pt;
+                background-color: white;
+                border: 1px solid gray;
+                border-radius: 4px;
+                color: black; /* Ensure text color is black */
+            }
+            QComboBox::drop-down {
+                border-left: 1px solid gray;
             }
         """)
         controls_layout.addWidget(self.x_axis_label)
@@ -1016,32 +1019,20 @@ class MainApp(QWidget):
 
         # Y-axis Selection
         self.y_axis_label = QLabel("Select Y-axis:")
+        set_label_style(self.y_axis_label)
 
-        if self.is_ability_mode:
-            self.y_axis_label.setStyleSheet(
-                """
-                QLabel {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: #7e07a0;
-                }
-            """
-            )
-        else:
-            self.y_axis_label.setStyleSheet(
-                """
-                QLabel {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: #207544;
-                }
-            """
-            )
         self.y_axis_combo = QComboBox(self)
         self.y_axis_combo.setStyleSheet("""
             QComboBox {
                 padding: 5px;
                 font-size: 12pt;
+                background-color: white;
+                border: 1px solid gray;
+                border-radius: 4px;
+                color: black; /* Ensure text color is black */
+            }
+            QComboBox::drop-down {
+                border-left: 1px solid gray;
             }
         """)
         controls_layout.addWidget(self.y_axis_label)
@@ -1049,27 +1040,7 @@ class MainApp(QWidget):
 
         # Label SpinBox
         self.label_spinbox_label = QLabel("Number of X-axis labels to display:")
-
-        if self.is_ability_mode:
-            self.label_spinbox_label.setStyleSheet(
-                """
-                QLabel {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: #7e07a0;
-                }
-            """
-            )
-        else:
-            self.label_spinbox_label.setStyleSheet(
-                """
-                QLabel {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: #207544;
-                }
-            """
-            )
+        set_label_style(self.label_spinbox_label)
 
         self.label_spinbox = QSpinBox(self)
         self.label_spinbox.setRange(1, 20)
@@ -1079,6 +1050,10 @@ class MainApp(QWidget):
             QSpinBox {
                 padding: 5px;
                 font-size: 12pt;
+                background-color: white;
+                border: 1px solid gray;
+                border-radius: 4px;
+                color: black; /* Ensure text color is black */
             }
         """)
         controls_layout.addWidget(self.label_spinbox_label)
@@ -1091,38 +1066,21 @@ class MainApp(QWidget):
         self.plot_button = QPushButton("Plot Graph", self)
         self.plot_button.setFixedWidth(150)
 
-        if self.is_ability_mode:
-            self.plot_button.setStyleSheet(
-                """
-            QPushButton {
-                background-color: #7e07a0;
+        button_color = "#7e07a0" if self.is_ability_mode else "#207544"
+        button_hover = "#9b32bf" if self.is_ability_mode else "#28a05e"
+        self.plot_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {button_color};
                 border: none;
                 border-radius: 8px;
                 padding: 10px;
                 font-size: 14pt;
                 color: white;
-            }
-            QPushButton:hover {
-                background-color: #9b32bf;
-            }
-        """
-            )
-        else:
-            self.plot_button.setStyleSheet(
-                """
-            QPushButton {
-                background-color: #207544;
-                border: none;
-                border-radius: 8px;
-                padding: 10px;
-                font-size: 14pt;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #28a05e;
-            }
-        """
-            )
+            }}
+            QPushButton:hover {{
+                background-color: {button_hover};
+            }}
+        """)
         self.plot_button.clicked.connect(self.plot_graph)
         controls_layout.addWidget(self.plot_button, alignment=Qt.AlignCenter)
 
@@ -1140,8 +1098,8 @@ class MainApp(QWidget):
         graph_area_layout.setContentsMargins(20, 20, 20, 20)
         graph_area_layout.setSpacing(10)
 
-        # Matplotlib Canvas
-        self.canvas = MplCanvas(self, width=5, height=4, dpi=100)
+        # Matplotlib Canvas with fixed size
+        self.canvas = MplCanvas(self, width=10, height=6, dpi=100)  # Reduced width and height
         self.canvas.setStyleSheet("""
             background-color: #2e2e2e;
         """)
@@ -1150,19 +1108,89 @@ class MainApp(QWidget):
         # Add Graph Area Layout to Main Graph Layout
         graph_layout.addLayout(graph_area_layout, stretch=3)
 
-        # Initialize an Empty Axes
-        self.canvas.ax = self.canvas.figure.add_subplot(111)
-
     def apply_graph_styles(self):
         """
         Applies consistent styles to the graph area.
         """
-        self.canvas.figure.patch.set_facecolor('#2e2e2e')  # Dark background
-        self.canvas.ax.set_facecolor('#2e2e2e')  # Dark background for plot area
-        self.canvas.ax.tick_params(axis='x', colors='white')  # White ticks
-        self.canvas.ax.tick_params(axis='y', colors='white')
-        self.canvas.ax.xaxis.label.set_color('white')  # White labels
-        self.canvas.ax.yaxis.label.set_color('white')
+        # Set the figure and axes background
+        self.canvas.figure.patch.set_facecolor('#2e2e2e')  # Dark background for the figure
+        self.canvas.ax.set_facecolor('#2e2e2e')  # Dark background for the plot area
+
+        # Set tick parameters
+        self.canvas.ax.tick_params(axis='x', colors='white')  # White ticks for X-axis
+        self.canvas.ax.tick_params(axis='y', colors='white')  # White ticks for Y-axis
+
+        # Set axis labels color
+        self.canvas.ax.xaxis.label.set_color('white')  # White X-axis label
+        self.canvas.ax.yaxis.label.set_color('white')  # White Y-axis label
+
+        # Set spines (axis lines) color to white
+        for spine in self.canvas.ax.spines.values():
+            spine.set_edgecolor('white')
+
+        # Set tick label colors and sizes
+        self.canvas.ax.tick_params(axis='both', which='major', labelsize=10, colors='white')
+
+        # Refresh the canvas
+        self.canvas.draw()
+        
+
+    def plot_graph(self):
+        """
+        Plots the graph based on the selected parameters.
+        """
+        if not hasattr(self, 'df') or self.df.empty:
+            QMessageBox.warning(self, "No Data", "No data available to plot. Please run a script to load data.")
+            return
+
+        # Clear Previous Plot
+        self.canvas.ax.clear()
+
+        # Get Selected Columns
+        x_column = self.x_axis_combo.currentText()
+        y_column = self.y_axis_combo.currentText()
+
+        if not x_column or not y_column:
+            QMessageBox.warning(self, "Selection Error", "Please select both X and Y axes.")
+            return
+
+        # Get Number of Labels to Display
+        max_labels = self.label_spinbox.value()
+
+        try:
+            x_data = self.df[x_column]
+            y_data = self.df[y_column]
+
+            # Scatter Plot
+            scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True, color='#207544')
+
+            # Set Axis Labels with Explicit White Color
+            self.canvas.ax.set_xlabel(x_column, color='white', fontsize=14)
+            self.canvas.ax.set_ylabel(y_column, color='white', fontsize=14)
+
+            # Configure X-axis Ticks and Labels
+            num_points = len(x_data)
+            step = max(1, num_points // max_labels)
+            tick_indices = range(0, num_points, step)
+            self.canvas.ax.set_xticks([x_data[i] for i in tick_indices])
+            self.canvas.ax.set_xticklabels([x_data[i] for i in tick_indices], ha="right", color='white')
+
+            # Configure Y-axis Tick Colors
+            self.canvas.ax.tick_params(axis='y', colors='white')
+
+            # Remove tight_layout to maintain fixed size
+            self.canvas.figure.tight_layout()
+
+            # Redraw Canvas
+            self.canvas.draw()
+
+            # Connect Click Event
+            self.canvas.mpl_connect("pick_event", self.on_click)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Plot Error", f"An error occurred while plotting the graph:\n{str(e)}")
+
+
 
     # ---------------------------------
     # DataFrame Handling
