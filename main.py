@@ -1596,59 +1596,7 @@ class MainApp(QWidget):
     # Graph Functionality
     # ---------------------------------
 
-    def plot_graph(self):
-        """
-        Plots the graph with the selected X and Y axes.
-        """
-        if not hasattr(self, 'df') or self.df.empty:
-            QMessageBox.warning(self, "No Data", "No data available to plot. Please run a script to load data.")
-            return
-
-        # Clear Previous Plot
-        self.canvas.ax.clear()
-
-        # Get Selected Columns
-        x_column = self.x_axis_combo.currentText()
-        y_column = self.y_axis_combo.currentText()
-
-        if not x_column or not y_column:
-            QMessageBox.warning(self, "Selection Error", "Please select both X and Y axes.")
-            return
-
-        # Get Number of Labels to Display
-        max_labels = self.label_spinbox.value()
-
-        try:
-            x_data = self.df[x_column]
-            y_data = self.df[y_column]
-
-            # Scatter Plot
-            scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True, color='#207544')
-
-            # Set Axis Labels
-            self.canvas.ax.set_xlabel(x_column)
-            self.canvas.ax.set_ylabel(y_column)
-
-            # Configure X-axis Ticks and Labels
-            num_points = len(x_data)
-            step = max(1, num_points // max_labels)
-            tick_indices = range(0, num_points, step)
-            self.canvas.ax.set_xticks([x_data[i] for i in tick_indices])
-            self.canvas.ax.set_xticklabels([x_data[i] for i in tick_indices], ha="right", color='white')
-
-            # Configure Y-axis Tick Colors
-            self.canvas.ax.tick_params(axis='y', colors='white')
-
-            self.canvas.figure.tight_layout()
-
-            # Redraw Canvas
-            self.canvas.draw()
-
-            # Connect Click Event
-            self.canvas.mpl_connect("pick_event", self.on_click)
-
-        except Exception as e:
-            QMessageBox.critical(self, "Plot Error", f"An error occurred while plotting the graph:\n{str(e)}")
+   
 
     def on_click(self, event):
         """
