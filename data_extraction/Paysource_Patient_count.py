@@ -73,15 +73,24 @@ def main():
         # If existing_df doesn't exist, initialize it with new_df
         existing_df = new_df.copy()
 
-    # Optional: Save the updated DataFrame to a new CSV
-    updated_csv_path = os.path.join(target_directory, "Updated_Patient_Count.csv")
-    existing_df.to_csv(updated_csv_path, index=False)
+    # Filter rows where Eligibility == 'Eligible' and make an explicit copy
+    eligible_df = existing_df[existing_df['Eligibility'] == 'Eligible'].copy()
 
-    # Filter rows where Eligibility == 'Eligible'
-    eligible_df = existing_df[existing_df['Eligibility'] == 'Eligible']
+    # **New Step:** Abbreviate 'Waiver/MCE' to 'United' if it contains 'UNITEDHEALTHCARE', else to the first word
+    def abbreviate_waiver_mce(value):
+        if isinstance(value, str):
+            value_clean = value.strip().upper()
+            if 'UNITEDHEALTHCARE' in value_clean:
+                return 'UNITED'
+            else:
+                return value.split()[0]
+        return value
 
-    # Count unique occurrences in 'Waiver/MCE' column
-    waiver_mce_counts = eligible_df['Waiver/MCE'].value_counts().reset_index()
+    # Use .loc to avoid SettingWithCopyWarning
+    eligible_df.loc[:, 'Waiver/MCE Abbrev'] = eligible_df['Waiver/MCE'].apply(abbreviate_waiver_mce)
+
+    # Count unique occurrences in the abbreviated 'Waiver/MCE' column
+    waiver_mce_counts = eligible_df['Waiver/MCE Abbrev'].value_counts().reset_index()
     waiver_mce_counts.columns = ['Waiver/MCE', 'Count']
 
     # Sort the DataFrame from largest to smallest count
@@ -93,7 +102,7 @@ def main():
     # Add a 'Percent of Total' column
     waiver_mce_counts['Percent of Total'] = (waiver_mce_counts['Count'] / total_count * 100).round(2)
 
-    # Print the counts with percentages in comma-delimited (CSV) format
+    # **Final Output:** Print the counts with percentages in comma-delimited (CSV) format
     print(waiver_mce_counts.to_csv(index=False))
 
 if __name__ == "__main__":
