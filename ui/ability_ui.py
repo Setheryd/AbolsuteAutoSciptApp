@@ -33,8 +33,13 @@ from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+
 # Categorized Items
-ability_daily_items = sorted(["Daily Example",])
+ability_daily_items = sorted(
+    [
+        "Employee Birthday Email",
+    ]
+)
 ability_daily_items.insert(0, "Run All")  # Ensure "Run All" is at the top
 
 ability_weekly_items = sorted(
@@ -98,8 +103,8 @@ def setup_ability_mode_tabs(self):
         """
 
     ability_setup_scripts_tab(self)
-    ability_setup_dashboard_tab(self)
-    ability_setup_graph_tab(self)
+    self.setup_dashboard_tab()
+    self.setup_graph_tab()
 
     # Apply the custom style sheet to the QTabWidget
     self.tab_widget.setStyleSheet(tab_style)
@@ -272,19 +277,6 @@ def ability_setup_scripts_tab(self):
     self.tab_widget.addTab(self.scripts_tab, "Scripts")
 
 
-def ability_setup_dashboard_tab(self):
-    """
-    Sets up the Dashboard tab in Ability mode.
-    """
-    dashboard_tab = QWidget()
-    dashboard_layout = QVBoxLayout()
-
-    dashboard_label = QLabel("Dashboard Tab Content")
-    dashboard_layout.addWidget(dashboard_label)
-
-    dashboard_tab.setLayout(dashboard_layout)
-    self.tab_widget.addTab(dashboard_tab, "Dashboard")
-
 
 def ability_setup_graph_tab(self):
     """
@@ -308,7 +300,7 @@ def ability_initialize_scripts_mapping(self):
     self.scripts = {
         # Daily Scripts
         "Employee Birthday Email": os.path.join(
-            script_dir, "daily_tasks", "birthday.py"
+            script_dir, "../daily_tasks", "birthday.py"
         ),
         # Weekly Scripts
         # Monthly Scripts
@@ -322,3 +314,4 @@ def ability_update_category_styles(self):
     self.daily_button.setChecked(self.expanded_categories["Daily"])
     self.weekly_button.setChecked(self.expanded_categories["Weekly"])
     self.monthly_button.setChecked(self.expanded_categories["Monthly"])
+
