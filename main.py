@@ -10,6 +10,7 @@ import sys
 import subprocess
 from datetime import datetime, timedelta
 from io import StringIO
+import io
 import threading
 from contextlib import redirect_stdout, redirect_stderr
 
@@ -53,28 +54,28 @@ from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
 #Daily Task Imports
 import daily_tasks.birthday
 
-#Weekly Task Imports
-import weekly_tasks.in_emp_id_exp
-import weekly_tasks.in_emp_inservices_exp
-import weekly_tasks.in_pat_sup_exp
-import weekly_tasks.indy_emp_eval
-import weekly_tasks.pending_admission
-import weekly_tasks.pending_caregiver_assignment
-import weekly_tasks.pending_IHCC_admission
-import weekly_tasks.pending_PERS_installation
-import weekly_tasks.sb_emp_eval
-import weekly_tasks.sb_emp_id_exp
-import weekly_tasks.sb_emp_inservices_exp
-import weekly_tasks.sb_pat_sup_exp
+# #Weekly Task Imports
+# import weekly_tasks.in_emp_id_exp
+# import weekly_tasks.in_emp_inservices_exp
+# import weekly_tasks.in_pat_sup_exp
+# import weekly_tasks.indy_emp_eval
+# import weekly_tasks.pending_admission
+# import weekly_tasks.pending_caregiver_assignment
+# import weekly_tasks.pending_IHCC_admission
+# import weekly_tasks.pending_PERS_installation
+# import weekly_tasks.sb_emp_eval
+# import weekly_tasks.sb_emp_id_exp
+# import weekly_tasks.sb_emp_inservices_exp
+# import weekly_tasks.sb_pat_sup_exp
 
-#Monthly Task Imports
-import monthly_tasks.age
-import monthly_tasks.employee_attrition
-import monthly_tasks.employee_attrition_email
-import monthly_tasks.next_month_NOA_exp
-import monthly_tasks.NOA_exp
-import monthly_tasks.patient_attrition
-import monthly_tasks.patient_attrition_email
+# #Monthly Task Imports
+# import monthly_tasks.age
+# import monthly_tasks.employee_attrition
+# import monthly_tasks.employee_attrition_email
+# import monthly_tasks.next_month_NOA_exp
+# import monthly_tasks.NOA_exp
+# import monthly_tasks.patient_attrition
+# import monthly_tasks.patient_attrition_email
 
 
 
@@ -686,12 +687,12 @@ class MainApp(QWidget):
 
         # Log Area
         self.log_label = QLabel("Script Output:")
-        self.log_label.hide()  # Hide initially
+        # self.log_label.hide()  # Hide initially
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
         self.log_text.setFixedWidth(400)
         self.log_text.setFixedHeight(400)
-        self.log_text.hide()  # Hide initially
+        # self.log_text.hide()  # Hide initially
         self.log_text.setStyleSheet(
             """
             QTextEdit {
