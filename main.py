@@ -48,7 +48,34 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
+
+#Daily Task Imports
 import daily_tasks.birthday
+
+#Weekly Task Imports
+import weekly_tasks.in_emp_id_exp
+import weekly_tasks.in_emp_inservices_exp
+import weekly_tasks.in_pat_sup_exp
+import weekly_tasks.indy_emp_eval
+import weekly_tasks.pending_admission
+import weekly_tasks.pending_caregiver_assignment
+import weekly_tasks.pending_IHCC_admission
+import weekly_tasks.pending_PERS_installation
+import weekly_tasks.sb_emp_eval
+import weekly_tasks.sb_emp_id_exp
+import weekly_tasks.sb_emp_inservices_exp
+import weekly_tasks.sb_pat_sup_exp
+
+#Monthly Task Imports
+import monthly_tasks.age
+import monthly_tasks.employee_attrition
+import monthly_tasks.employee_attrition_email
+import monthly_tasks.next_month_NOA_exp
+import monthly_tasks.NOA_exp
+import monthly_tasks.patient_attrition
+import monthly_tasks.patient_attrition_email
+
+
 
 
 # =============================================================================
