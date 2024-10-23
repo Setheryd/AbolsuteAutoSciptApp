@@ -3,7 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 import win32com.client as win32
 from datetime import datetime
-from employee_attrition import ChurnAttritionAnalyzer
+from .employee_attrition import ChurnAttritionAnalyzer
 from caregiver_data_extractor import CaregiverDataExtractor
 from bs4 import BeautifulSoup  # Needed for signature parsing
 import logging

@@ -59,32 +59,31 @@ from matplotlib.figure import Figure
 
 from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
 
-#Daily Task Imports
+# Daily Task Imports
 import daily_tasks.birthday
 
 # #Weekly Task Imports
-# import weekly_tasks.in_emp_id_exp
-# import weekly_tasks.in_emp_inservices_exp
-# import weekly_tasks.in_pat_sup_exp
-# import weekly_tasks.indy_emp_eval
-# import weekly_tasks.pending_admission
-# import weekly_tasks.pending_caregiver_assignment
-# import weekly_tasks.pending_IHCC_admission
-# import weekly_tasks.pending_PERS_installation
-# import weekly_tasks.sb_emp_eval
-# import weekly_tasks.sb_emp_id_exp
-# import weekly_tasks.sb_emp_inservices_exp
-# import weekly_tasks.sb_pat_sup_exp
+import weekly_tasks.in_emp_id_exp
+import weekly_tasks.in_emp_inservices_exp
+import weekly_tasks.in_pat_sup_exp
+import weekly_tasks.indy_emp_eval
+import weekly_tasks.pending_admission
+import weekly_tasks.pending_caregiver_assignment
+import weekly_tasks.pending_IHCC_admission
+import weekly_tasks.pending_PERS_installation
+import weekly_tasks.sb_emp_eval
+import weekly_tasks.sb_emp_id_exp
+import weekly_tasks.sb_emp_inservices_exp
+import weekly_tasks.sb_pat_sup_exp
 
 # #Monthly Task Imports
-# import monthly_tasks.age
-# import monthly_tasks.employee_attrition
-# import monthly_tasks.employee_attrition_email
-# import monthly_tasks.next_month_NOA_exp
-# import monthly_tasks.NOA_exp
-# import monthly_tasks.patient_attrition
-# import monthly_tasks.patient_attrition_email
-
+import monthly_tasks.age
+import monthly_tasks.employee_attrition
+import monthly_tasks.employee_attrition_email
+import monthly_tasks.next_month_NOA_exp
+import monthly_tasks.NOA_exp
+import monthly_tasks.patient_attrition
+import monthly_tasks.patient_attrition_email
 
 
 # Placeholder for the callable script
@@ -449,63 +448,26 @@ class MainApp(QWidget):
         self.scripts = {
             # Daily Scripts
             "Employee Birthday Email": daily_tasks.birthday.main,  # Callable
-
             # Weekly Scripts
-            "Caregiver ID Exp": self.get_resource_path(
-                os.path.join("weekly_tasks", "in_emp_id_exp.py")
-            ),
-            "IN Emp EVAL EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "indy_emp_eval.py")
-            ),
-            "IN Emp In-Services EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "in_emp_inservices_exp.py")
-            ),
-            "IN PAT SUP EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "in_pat_sup_exp.py")
-            ),
-            "Pending Admission": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_admission.py")
-            ),
-            "Pending Caregiver Assignment": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_caregiver_assignment.py")
-            ),
-            "Pending IHCC Admission": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_IHCC_admission.py")
-            ),
-            "Pending PERS Installation": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_PERS_Installation.py")
-            ),
-            "SB EMP EVAL EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_emp_eval.py")
-            ),
-            "SB Emp Inservices Exp": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_emp_inservices_exp.py")
-            ),
-            "SB ID EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_emp_id_exp.py")
-            ),
-            "SB PAT SUP EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_pat_sup_exp.py")
-            ),
+            "Caregiver ID Exp": weekly_tasks.in_emp_id_exp.extract_expiring_employees,
+            "IN Emp EVAL EXP": weekly_tasks.indy_emp_eval.extract_evaluation_expirations,
+            "IN Emp In-Services EXP": weekly_tasks.in_emp_inservices_exp.extract_evaluation_expirations,
+            "IN PAT SUP EXP": weekly_tasks.in_pat_sup_exp.run_task,
+            "Pending Admission": weekly_tasks.pending_admission.main,
+            "Pending Caregiver Assignment": weekly_tasks.pending_caregiver_assignment.main,
+            "Pending IHCC Admission": weekly_tasks.pending_IHCC_admission.main,
+            "Pending PERS Installation": weekly_tasks.pending_PERS_installation.main,
+            "SB EMP EVAL EXP": weekly_tasks.sb_emp_eval.extract_evaluation_expirations,
+            "SB Emp Inservices Exp": weekly_tasks.sb_emp_inservices_exp.extract_evaluation_expirations,
+            "SB ID EXP": weekly_tasks.sb_emp_id_exp.extract_expiring_employees,
+            "SB PAT SUP EXP": weekly_tasks.sb_pat_sup_exp.extract_evaluation_expirations,
+            
             # Monthly Scripts
-            "Age Notification": self.get_resource_path(
-                os.path.join("monthly_tasks", "age.py")
-            ),
-            "Employee Attrition Email": self.get_resource_path(
-                os.path.join("monthly_tasks", "employee_attrition_email.py")
-            ),
-            "Expired NOAs": self.get_resource_path(
-                os.path.join("monthly_tasks", "NOA_exp.py")
-            ),
-            "Inventory Request": self.get_resource_path(
-                os.path.join("monthly_tasks", "inventory_request.py")
-            ),
-            "Next Months Expired NOAs": self.get_resource_path(
-                os.path.join("monthly_tasks", "next_month_NOA_exp.py")
-            ),
-            "Patient Attrition": self.get_resource_path(
-                os.path.join("monthly_tasks", "patient_attrition_email.py")
-            ),
+            "Age Notification": monthly_tasks.age.main,
+            "Employee Attrition Email": monthly_tasks.employee_attrition_email.main,
+            "Expired NOAs": monthly_tasks.NOA_exp.main,
+            "Next Months Expired NOAs": monthly_tasks.next_month_NOA_exp.main,
+            "Patient Attrition": monthly_tasks.patient_attrition_email.main,
             # Add more scripts as needed
         }
 
@@ -2028,7 +1990,7 @@ class MainApp(QWidget):
             color (str): The color of the text.
             message (str): The message to append.
         """
-        self.log_text.append(f"<span style='color: {color};'>{message}</span>")
+        self.log_text.append(f"<span style='color: white;'>{message}</span>")
 
     # ---------------------------------
     # Script Running Method
@@ -2116,8 +2078,7 @@ class MainApp(QWidget):
             self.loading_bar.hide()
             self.retrieving_data_label.hide()
             self.blur_effect.setEnabled(False)
-            
-            
+
     def show_summary(self):
         """
         Displays a summary of script execution results.
