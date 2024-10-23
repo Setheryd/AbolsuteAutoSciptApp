@@ -566,7 +566,7 @@ class MainApp(QWidget):
 
             # Hide the Absolute tabs and show Ability tabs on the right side
             self.tab_widget.clear()  # Clear the existing tabs
-            # setup_ability_mode_tabs(self)  # Setup Ability tabs (Ensure this function is correctly implemented)
+            setup_ability_mode_tabs(self)  # Setup Ability tabs (Ensure this function is correctly implemented)
 
         else:
             # Switch back to Absolute mode
