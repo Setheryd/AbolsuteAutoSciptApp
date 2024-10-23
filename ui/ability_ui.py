@@ -2,7 +2,7 @@
 import os
 import win32com.client as win32  # type: ignore
 import pandas as pd
-import mplcursors  # type: ignore
+# import mplcursors  # type: ignore
 import matplotlib.pyplot as plt
 from PySide6.QtWidgets import (  # type: ignore
     QApplication,
