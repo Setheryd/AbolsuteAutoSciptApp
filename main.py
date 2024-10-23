@@ -81,7 +81,6 @@ monthly_items = sorted(
         "Age Notification",
         "Employee Attrition",
         "Expired NOAs",
-        "Inventory Request",
         "Next Months Expired NOAs",
         "Patient Attrition",
     ]
@@ -299,7 +298,7 @@ class MainApp(QWidget):
         screen = QGuiApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
         self.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height() - 20)
-        
+
     def get_resource_path(self, relative_path):
         """Get the absolute path to the resource, works for PyInstaller executable."""
         try:
@@ -308,7 +307,7 @@ class MainApp(QWidget):
         except AttributeError:
             # If not running as an executable, use the current script directory
             base_path = os.path.dirname(os.path.abspath(__file__))
-        
+
         return os.path.join(base_path, relative_path)
 
     def initialize_scripts_mapping(self):
@@ -1501,8 +1500,14 @@ class MainApp(QWidget):
             self.script_buttons[script_name].set_status("running")
             self.highlight_active_button(script_name)
 
+            # Determine if running as PyInstaller bundled executable or using normal Python interpreter
+            interpreter = (
+                sys.executable if not getattr(sys, "frozen", False) else "python"
+            )
+
+            # Initialize QProcess to execute the script using the correct interpreter
             self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
+            self.process.setProgram(interpreter)
             self.process.setArguments(["-u", script_path])
 
             # Connect Signals
@@ -1577,7 +1582,6 @@ class MainApp(QWidget):
                 f"An error occurred while executing the script:\n{str(e)}",
             )
             self.reset_execution_state()
-
 
     def handle_stdout(self):
         """
@@ -1950,11 +1954,16 @@ class MainApp(QWidget):
                     return
 
                 # Execute the script using the original Python interpreter, not the PyInstaller executable
+                if os.name == 'nt':
+                    # Windows-specific flag to suppress the console window
+                    CREATE_NO_WINDOW = 0x08000000
+
                 process = subprocess.Popen(
                     [sys.executable if not getattr(sys, 'frozen', False) else 'python', script_path],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
+                    creationflags=CREATE_NO_WINDOW if os.name == 'nt' else 0  # Add flag on Windows
                 )
                 stdout, stderr = process.communicate()
 
@@ -1991,7 +2000,6 @@ class MainApp(QWidget):
 
         # Start the script execution in a separate thread
         threading.Thread(target=lambda: execute_script(file_name)).start()
-
 
     def toggle_loading(self, is_loading):
         """
