@@ -1808,7 +1808,7 @@ class MainApp(QWidget):
         self.current_script_name = script_name
 
         # Log the start of script execution
-        self.log_signal.emit("black", f"<b>Starting script:</b> {script_name}<br>")
+        self.log_signal.emit("white", f"<b>Starting script:</b> {script_name}<br>")
 
         # Create worker and thread
         self.script_thread = QThread()
