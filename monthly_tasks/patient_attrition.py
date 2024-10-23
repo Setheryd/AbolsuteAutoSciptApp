@@ -1,4 +1,4 @@
-#patient_attrition.py
+# patient_attrition.py
 
 import pandas as pd
 import os
@@ -8,14 +8,26 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MaxNLocator
 
-# Get the parent directory of the current script
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+def get_resource_path(relative_path):
+    """Get the absolute path to the resource, works for PyInstaller executable."""
+    try:
+        # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # If not running as an executable, use the current script directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
+# Get the parent directory using get_resource_path
+parent_dir = get_resource_path(os.path.join(os.pardir))
 
 # Add the data_extraction directory to the system path
 sys.path.append(os.path.join(parent_dir, "data_extraction"))
 
-from patient_data_extractor import PatientDataExtractor
+from data_extraction.patient_data_extractor import PatientDataExtractor
 
 
 class ChurnAttritionAnalyzer:
@@ -185,7 +197,7 @@ class ChurnAttritionAnalyzer:
         """
         return report_df.to_csv(index=False)
 
-    def generate_charts(self, report_df, output_dir="charts"):
+    def generate_charts(self, report_df, output_dir="../charts"):
         """
         Generate charts showing churn and attrition rates over time and save as an image file.
 
@@ -242,14 +254,15 @@ class ChurnAttritionAnalyzer:
         plt.tight_layout()
 
         # Define absolute path for the chart image
-        chart_filename = os.path.abspath(os.path.join(output_dir, "churn_attrition_chart.png"))
+        chart_filename = get_resource_path(
+            os.path.join(output_dir, "churn_attrition_chart.png")
+        )
 
         # Save the figure
         plt.savefig(chart_filename)
         plt.close()  # Close the figure to free memory
 
         return chart_filename
-
 
     def run_analysis(self):
         """
@@ -265,12 +278,12 @@ class ChurnAttritionAnalyzer:
 
         # Instead of saving to CSV, get the CSV string
         csv_string = self.get_csv_string(report_df)
-  
+
         print(csv_string)
-        
+
         # Generate charts and get the chart filename
         chart_filename = self.generate_charts(report_df)
-        
+
         # Optionally, you can return the report and chart filename
         return report_df, chart_filename
 
