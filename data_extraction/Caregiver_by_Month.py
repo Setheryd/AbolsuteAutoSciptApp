@@ -26,11 +26,11 @@ def main():
             sys.exit(1)  # Exit with error code if no data
 
         # Convert 'Date of Hire' and 'Term Date' to datetime for proper handling
-        df["Date of Hire (H)"] = pd.to_datetime(df["Date of Hire (H)"], errors='coerce')
-        df["Term Date (J)"] = pd.to_datetime(df["Term Date (J)"], errors='coerce')
+        df["Date of Hire"] = pd.to_datetime(df["Date of Hire"], errors='coerce')
+        df["Term Date"] = pd.to_datetime(df["Term Date"], errors='coerce')
 
         # Determine the date range (from the earliest month to the current month)
-        start_date = df["Date of Hire (H)"].min().replace(day=1)
+        start_date = df["Date of Hire"].min().replace(day=1)
         end_date = pd.Timestamp.today().replace(day=1)
 
         # Create a list of months between the start and end date
@@ -42,15 +42,15 @@ def main():
         # Loop through each month and count the number of active caregivers and caregivers who left
         for month in all_months:
             active_caregivers = df[
-                (df["Date of Hire (H)"] <= month) & 
-                ((df["Term Date (J)"].isna()) | (df["Term Date (J)"] >= month))
+                (df["Date of Hire"] <= month) & 
+                ((df["Term Date"].isna()) | (df["Term Date"] >= month))
             ]
             num_active_caregivers = len(active_caregivers)
             
             # Count the number of caregivers who left during the month
             caregivers_left = df[
-                (df["Term Date (J)"] >= month) & 
-                (df["Term Date (J)"] < month + pd.DateOffset(months=1))
+                (df["Term Date"] >= month) & 
+                (df["Term Date"] < month + pd.DateOffset(months=1))
             ]
             num_caregivers_left = len(caregivers_left)
             
