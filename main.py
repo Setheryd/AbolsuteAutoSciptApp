@@ -11,6 +11,7 @@ import subprocess
 from datetime import datetime, timedelta
 from io import StringIO
 import threading
+from contextlib import redirect_stdout, redirect_stderr
 
 
 # Third-Party Imports
@@ -1521,8 +1522,8 @@ class MainApp(QWidget):
 
     def run_single_script(self, script_function, script_name):
         """
-        Executes a single script function directly.
-        
+        Executes a single script function directly and captures its print statements.
+
         Args:
             script_function (callable): The function to execute.
             script_name (str): The name of the script.
@@ -1545,21 +1546,40 @@ class MainApp(QWidget):
             self.current_script_name = script_name
 
             # Log the start of script execution
-            self.log_text.append(f"Starting script: {script_name}\n")
+            self.log_text.append(f"<b>Starting script:</b> {script_name}<br>")
 
-            # Execute the script function
-            result = script_function()
+            # Create StringIO objects to capture stdout and stderr
+            stdout_capture = io.StringIO()
+            stderr_capture = io.StringIO()
 
+            # Redirect stdout and stderr to the StringIO objects
+            with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+                # Execute the script function
+                result = script_function()
+
+            # Retrieve the captured outputs
+            stdout_output = stdout_capture.getvalue()
+            stderr_output = stderr_capture.getvalue()
+
+            # Display captured stdout in the log
+            if stdout_output:
+                formatted_stdout = stdout_output.replace("\n", "<br>")
+                self.log_text.append(f"<span style='color: white;'>{formatted_stdout}</span>")
+
+            # Display captured stderr in the log
+            if stderr_output:
+                formatted_stderr = stderr_output.replace("\n", "<br>")
+                self.log_text.append(f"<span style='color: red;'>{formatted_stderr}</span>")
 
             # Handle the result
             if isinstance(result, pd.DataFrame):
                 self.display_dataframe(result)
-                self.log_text.append(f"<span style='color: green;'>Script '{script_name}' executed successfully.</span>\n")
+                self.log_text.append(f"<span style='color: green;'>Script '{script_name}' executed successfully.</span><br>")
                 self.script_results[script_name] = "success"
                 self.script_buttons[script_name].set_status("success")
             else:
                 # If the script returns something else, handle accordingly
-                self.log_text.append(f"<span style='color: green;'>Script '{script_name}' executed with result: {result}</span>\n")
+                self.log_text.append(f"<span style='color: green;'>Script '{script_name}' executed with result: {result}</span><br>")
                 self.script_results[script_name] = "success"
                 self.script_buttons[script_name].set_status("success")
 
@@ -1574,7 +1594,7 @@ class MainApp(QWidget):
 
             # Show summary
             self.show_summary()
-
+            
             # Start Timeout Timer
             self.timer.start()
 
@@ -1583,9 +1603,11 @@ class MainApp(QWidget):
 
         except Exception as e:
             # Log the error
-            self.log_text.append(f"<span style='color: red;'>Error executing script '{script_name}': {str(e)}</span>\n")
+            self.log_text.append(f"<span style='color: red;'>Error executing script '{script_name}': {str(e)}</span><br>")
             self.script_results[script_name] = "failed"
-            self.script_buttons[script_name].set_status("failed")
+            self.script_buttons[script_name].set_status("failed"
+
+            )
 
             # Reset button highlights
             self.highlight_active_button(None)
@@ -1598,6 +1620,7 @@ class MainApp(QWidget):
 
             # Show summary
             self.show_summary()
+
 
     def handle_stdout(self):
         """
