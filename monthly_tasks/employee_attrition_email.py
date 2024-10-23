@@ -3,8 +3,8 @@ import sys
 import matplotlib.pyplot as plt
 import win32com.client as win32
 from datetime import datetime
-from .employee_attrition import ChurnAttritionAnalyzer
-from data_extraction.caregiver_data_extractor import CaregiverDataExtractor
+from employee_attrition import ChurnAttritionAnalyzer
+from caregiver_data_extractor import CaregiverDataExtractor
 from bs4 import BeautifulSoup  # Needed for signature parsing
 import logging
 
@@ -72,7 +72,7 @@ def get_default_outlook_email():
         str: The default email address if available, otherwise None.
     """
     try:
-        outlook = win32.Dispatch("Outlook.Application")
+        outlook = win32.DispatchEx("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
         accounts = namespace.Accounts
         if accounts.Count > 0:
@@ -140,7 +140,7 @@ def embed_images_in_signature(signature_html, sig_dir):
 
 def send_email(report, signature, chart_filename):
     # Create the Outlook application
-    outlook = win32.Dispatch('outlook.application')
+    outlook = win32.DispatchEx('outlook.application')
     mail = outlook.CreateItem(0)
 
     # Email body with last month's results
