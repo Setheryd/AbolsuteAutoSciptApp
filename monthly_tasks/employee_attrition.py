@@ -8,14 +8,26 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MaxNLocator
 
-# Get the parent directory of the current script
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+def get_resource_path(relative_path):
+    """Get the absolute path to the resource, works for PyInstaller executable."""
+    try:
+        # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # If not running as an executable, use the current script directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
+# Get the parent directory using get_resource_path
+parent_dir = get_resource_path(os.path.join(os.pardir))
 
 # Add the data_extraction directory to the system path
 sys.path.append(os.path.join(parent_dir, "data_extraction"))
 
-from caregiver_data_extractor import CaregiverDataExtractor
+from data_extraction.caregiver_data_extractor import CaregiverDataExtractor
 
 class ChurnAttritionAnalyzer:
     def __init__(self, extractor: CaregiverDataExtractor):
@@ -207,7 +219,7 @@ class ChurnAttritionAnalyzer:
         """
         return report_df.to_csv(index=False)
 
-    def generate_charts(self, report_df, output_dir="charts"):
+    def generate_charts(self, report_df, output_dir="../charts"):
         """
         Generate charts showing churn and attrition rates over time and save as an image file.
 
@@ -227,19 +239,23 @@ class ChurnAttritionAnalyzer:
             report_df["Report Month"], format="%B %Y"
         )
 
-        # Plot Churn and Attrition Rates
+        # Plot Churn and Attrition Rates with specified colors
         plt.figure(figsize=(14, 7))
         plt.plot(
             report_df["Report Month Date"],
             report_df["Churn Rate (%)"],
             marker="o",
             label="Churn Rate (%)",
+            color="#006400",  # Dark green for Churn Rate
+            linewidth=2
         )
         plt.plot(
             report_df["Report Month Date"],
             report_df["Attrition Rate (%)"],
             marker="o",
             label="Attrition Rate (%)",
+            color="#32CD32",  # Lighter green for Attrition Rate
+            linewidth=2
         )
 
         plt.xlabel("Month")
@@ -260,13 +276,26 @@ class ChurnAttritionAnalyzer:
         plt.tight_layout()
 
         # Define absolute path for the chart image
-        chart_filename = os.path.abspath(os.path.join(output_dir, "churn_attrition_chart.png"))
+        # Use get_resource_path to define the absolute path for the chart image
+        chart_filename = self.get_resource_path(os.path.join(output_dir, "churn_attrition_chart.png"))
+
 
         # Save the figure
         plt.savefig(chart_filename)
         plt.close()  # Close the figure to free memory
 
         return chart_filename
+
+    def get_resource_path(self, relative_path):
+        """Get the absolute path to the resource, works for PyInstaller executable."""
+        try:
+            # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+            base_path = sys._MEIPASS
+        except AttributeError:
+            # If not running as an executable, use the current script directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+
+        return os.path.join(base_path, relative_path)
 
     def run_analysis(self):
         """

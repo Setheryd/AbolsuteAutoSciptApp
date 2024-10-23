@@ -4,12 +4,7 @@ import os
 import logging
 from datetime import datetime
 
-# Set up logging to a file
-logging.basicConfig(
-    filename='extract_caregivers.log',
-    level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s:%(message)s'
-)
+
 
 class BillingFilesDataExtractor:
     def __init__(self, base_path=None, required_directory="Absolute Billing and Payroll", password="abs$0321$S"):

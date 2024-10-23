@@ -10,8 +10,9 @@ import sys
 import subprocess
 from datetime import datetime, timedelta
 from io import StringIO
+import io
 import threading
-
+from contextlib import redirect_stdout, redirect_stderr
 
 # Third-Party Imports
 import win32com.client as win32  # type: ignore
@@ -42,55 +43,101 @@ from PySide6.QtWidgets import (  # type: ignore
     QProgressBar,
     QGraphicsBlurEffect,
 )
-from PySide6.QtCore import Qt, QProcess, Slot, QTimer, QPropertyAnimation  # type: ignore
+from PySide6.QtCore import (
+    Qt,
+    QProcess,
+    Slot,
+    QTimer,
+    QPropertyAnimation,
+    Signal,
+    QObject,
+    QThread,
+)  # type: ignore
 from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+
+from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
+
+# Daily Task Imports
+import daily_tasks.birthday
+
+# #Weekly Task Imports
+import weekly_tasks.in_emp_id_exp
+import weekly_tasks.in_emp_inservices_exp
+import weekly_tasks.in_pat_sup_exp
+import weekly_tasks.indy_emp_eval
+import weekly_tasks.pending_admission
+import weekly_tasks.pending_caregiver_assignment
+import weekly_tasks.pending_IHCC_admission
+import weekly_tasks.pending_PERS_installation
+import weekly_tasks.sb_emp_eval
+import weekly_tasks.sb_emp_id_exp
+import weekly_tasks.sb_emp_inservices_exp
+import weekly_tasks.sb_pat_sup_exp
+
+# #Monthly Task Imports
+import monthly_tasks.age
+import monthly_tasks.employee_attrition
+import monthly_tasks.employee_attrition_email
+import monthly_tasks.next_month_NOA_exp
+import monthly_tasks.NOA_exp
+import monthly_tasks.patient_attrition
+import monthly_tasks.patient_attrition_email
+
+
+# Placeholder for the callable script
+# Replace this with your actual import
+import daily_tasks.birthday  # Ensure this is correctly imported
 
 # =============================================================================
 # Constants
 # =============================================================================
 
 # Categorized Items
-daily_items = sorted([
-    "Employee Birthday Email"
-])
+daily_items = sorted(["Employee Birthday Email"])
 daily_items.insert(0, "Run All")  # Ensure "Run All" is at the top
 
-weekly_items = sorted([
-    "Caregiver ID Exp",
-    "IN Emp EVAL EXP",
-    "IN Emp In-Services EXP",
-    "IN PAT SUP EXP",
-    "Pending Admission",
-    "Pending Caregiver Assignment",
-    "Pending IHCC Admission",
-    "Pending PERS Installation",
-    "SB EMP EVAL EXP",
-    "SB Emp Inservices Exp",
-    "SB ID EXP",
-    "SB PAT SUP EXP"
-])
+weekly_items = sorted(
+    [
+        "Caregiver ID Exp",
+        "IN Emp EVAL EXP",
+        "IN Emp In-Services EXP",
+        "IN PAT SUP EXP",
+        "Pending Admission",
+        "Pending Caregiver Assignment",
+        "Pending IHCC Admission",
+        "Pending PERS Installation",
+        "SB EMP EVAL EXP",
+        "SB Emp Inservices Exp",
+        "SB ID EXP",
+        "SB PAT SUP EXP",
+    ]
+)
 weekly_items.insert(0, "Run All")  # Ensure "Run All" is at the top
 
-monthly_items = sorted([
-    "Age Notification",
-    "Employee Attrition",
-    "Expired NOAs",
-    "Inventory Request",
-    "Next Months Expired NOAs",
-    "Patient Attrition",
-])
+monthly_items = sorted(
+    [
+        "Age Notification",
+        "Employee Attrition",
+        "Expired NOAs",
+        "Inventory Request",
+        "Next Months Expired NOAs",
+        "Patient Attrition",
+    ]
+)
 monthly_items.insert(0, "Run All")  # Ensure "Run All" is at the top
 
 # =============================================================================
 # Helper Classes
 # =============================================================================
 
+
 class ScriptButtonWidget(QWidget):
     """
     Composite widget containing a script button and an optional status indicator.
     """
+
     def __init__(self, script_name, button, has_status=True):
         super().__init__()
         self.script_name = script_name
@@ -100,9 +147,11 @@ class ScriptButtonWidget(QWidget):
         # Status Label
         self.status_label = QLabel()
         if self.has_status:
-            self.status_label.setFixedSize(24, 24)  # Increased size for better visibility
+            self.status_label.setFixedSize(
+                24, 24
+            )  # Increased size for better visibility
             self.status_label.setAlignment(Qt.AlignCenter)
-            self.status = 'pending'
+            self.status = "pending"
             self.update_status_icon()
         else:
             self.status_label.hide()
@@ -117,6 +166,17 @@ class ScriptButtonWidget(QWidget):
         layout.setSpacing(10)
         self.setLayout(layout)
 
+    def get_resource_path(self, relative_path):
+        """Get the absolute path to the resource, works for PyInstaller executable."""
+        try:
+            # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+            base_path = sys._MEIPASS
+        except AttributeError:
+            # If not running as an executable, use the current script directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+
+        return os.path.join(base_path, relative_path)
+
     def make_pixmap_white(self, pixmap):
         """
         Returns a white-tinted version of the given pixmap.
@@ -127,7 +187,7 @@ class ScriptButtonWidget(QWidget):
         painter.setCompositionMode(QPainter.CompositionMode_Source)
         painter.drawPixmap(0, 0, pixmap)
         painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
-        painter.fillRect(white_pixmap.rect(), QColor('white'))
+        painter.fillRect(white_pixmap.rect(), QColor("white"))
         painter.end()
         return white_pixmap
 
@@ -139,15 +199,14 @@ class ScriptButtonWidget(QWidget):
             return
 
         # Construct absolute path to the icon
-        script_dir = os.path.dirname(os.path.abspath(__file__))
         icon_mapping = {
-            'pending': 'pending.png',
-            'running': 'running.png',
-            'success': 'success.png',
-            'failed': 'failed.png'
+            "pending": "pending.png",
+            "running": "running.png",
+            "success": "success.png",
+            "failed": "failed.png",
         }
-        icon_file = icon_mapping.get(self.status, '')
-        icon_path = os.path.join(script_dir, 'resources', icon_file)
+        icon_file = icon_mapping.get(self.status, "")
+        icon_path = self.get_resource_path(os.path.join("resources", icon_file))
 
         if os.path.exists(icon_path):
             pixmap = QPixmap(icon_path)
@@ -156,14 +215,16 @@ class ScriptButtonWidget(QWidget):
                 self.status_label.setText(self.status.capitalize())
             else:
                 # Tint 'pending.png' and 'running.png' to white
-                if self.status in ['pending', 'running']:
+                if self.status in ["pending", "running"]:
                     pixmap = self.make_pixmap_white(pixmap)
 
-                self.status_label.setPixmap(pixmap.scaled(
-                    self.status_label.size(),
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation
-                ))
+                self.status_label.setPixmap(
+                    pixmap.scaled(
+                        self.status_label.size(),
+                        Qt.KeepAspectRatio,
+                        Qt.SmoothTransformation,
+                    )
+                )
         else:
             print(f"Icon path does not exist: {icon_path}")
             self.status_label.setText(self.status.capitalize())
@@ -180,18 +241,23 @@ class ScriptButtonWidget(QWidget):
 
 
 class MplCanvas(FigureCanvas):
-    """
-    Matplotlib Canvas to embed plots within the Qt application.
-    """
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        self.fig, self.ax = plt.subplots(figsize=(width, height), dpi=dpi)
-        super().__init__(self.fig)
+    def __init__(self, parent=None, width=10, height=6, dpi=100):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.ax = self.fig.add_subplot(111)
+        super(MplCanvas, self).__init__(self.fig)
+
+        # Fix the size based on figsize and dpi
+        self.setFixedSize(width * dpi, height * dpi)
+
+        # Prevent the canvas from expanding
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
 
 class CustomTableWidget(QTableWidget):
     """
     Custom QTableWidget to handle Ctrl+C for copying selected data.
     """
+
     def keyPressEvent(self, event):
         """Handle key press events, including Ctrl+C."""
         if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:
@@ -217,22 +283,85 @@ class CustomTableWidget(QTableWidget):
                 row_content = []
                 for col in cols:
                     item = self.item(row, col)
-                    row_content.append(item.text() if item else '')
+                    row_content.append(item.text() if item else "")
                 clipboard_content += "\t".join(row_content) + "\n"
 
         clipboard = QApplication.clipboard()
         clipboard.setText(clipboard_content.strip())
 
-        QMessageBox.information(self, "Copied", "Selected data has been copied to the clipboard.")
+        QMessageBox.information(
+            self, "Copied", "Selected data has been copied to the clipboard."
+        )
+
+
+# =============================================================================
+# ScriptWorker Class
+# =============================================================================
+
+
+class ScriptWorker(QObject):
+    """
+    Worker class to execute script functions in a separate thread.
+    """
+
+    finished = Signal(str, str)  # script_name, status
+    log = Signal(str, str)  # color, message
+    result_ready = Signal(object)  # To pass the DataFrame back to the main thread
+
+    def __init__(self, script_function, script_name):
+        super().__init__()
+        self.script_function = script_function
+        self.script_name = script_name
+
+    def run(self):
+        try:
+            # Capture stdout and stderr
+            stdout_capture = io.StringIO()
+            stderr_capture = io.StringIO()
+
+            # Redirect stdout and stderr
+            with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+                # Execute the script function
+                result = self.script_function()
+
+            # Retrieve the outputs
+            stdout_output = stdout_capture.getvalue()
+            stderr_output = stderr_capture.getvalue()
+
+            # Emit logs
+            if stdout_output:
+                self.log.emit("white", stdout_output)
+            if stderr_output:
+                self.log.emit("red", stderr_output)
+
+            # Emit result if it's a DataFrame
+            if isinstance(result, pd.DataFrame):
+                self.result_ready.emit(result)
+
+            # Emit finished signal with 'success' status
+            self.finished.emit(self.script_name, "success")
+
+        except Exception as e:
+            self.log.emit(
+                "red", f"Error executing script '{self.script_name}': {str(e)}\n"
+            )
+            # Emit finished signal with 'failed' status
+            self.finished.emit(self.script_name, "failed")
+
 
 # =============================================================================
 # Main Application Class
 # =============================================================================
 
+
 class MainApp(QWidget):
     """
     Main application window for the Absolute Caregivers Auto Scripting App.
     """
+
+    # Define signals
+    log_signal = Signal(str, str)  # (color, message)
+
     def __init__(self):
         super().__init__()
 
@@ -243,6 +372,7 @@ class MainApp(QWidget):
         self.script_results = {}
         self.pending_scripts = []
         self.current_script_name = None
+        self.is_ability_mode = False
 
         # Timer for Timeout
         self.timer = QTimer(self)
@@ -258,6 +388,39 @@ class MainApp(QWidget):
         # Initialize UI Components
         self.initialize_ui()
 
+        # Connect log_signal to append_log method
+        self.log_signal.connect(self.append_log)
+
+    def handle_timeout(self):
+        """
+        Handles the event when a script execution times out.
+        """
+        if self.process and self.process.state() == QProcess.Running:
+            # Terminate the running process
+            self.process.kill()
+            self.process = None  # Reset the process reference
+
+            # Log the timeout event
+            timeout_message = f"<span style='color: orange;'>Script '{self.current_script_name}' timed out.</span><br>"
+            self.log_signal.emit("orange", timeout_message)
+
+            # Update the script status to 'failed'
+            self.script_results[self.current_script_name] = "failed"
+            if self.current_script_name in self.script_buttons:
+                self.script_buttons[self.current_script_name].set_status("failed")
+
+            # Reset button highlights
+            self.highlight_active_button(None)
+
+            # Hide execution indicators
+            self.hide_execution_indicators()
+
+            # Re-enable buttons
+            self.set_buttons_enabled(True)
+
+            # Show summary
+            self.show_summary()
+
     def setup_window(self):
         """
         Configures the main window properties.
@@ -267,42 +430,52 @@ class MainApp(QWidget):
         screen_geometry = screen.availableGeometry()
         self.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height() - 20)
 
+    def get_resource_path(self, relative_path):
+        """Get the absolute path to the resource, works for PyInstaller executable."""
+        try:
+            # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+            base_path = sys._MEIPASS
+        except AttributeError:
+            # If not running as an executable, use the current script directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+
+        return os.path.join(base_path, relative_path)
+
     def initialize_scripts_mapping(self):
         """
-        Maps script names to their corresponding file paths.
+        Maps script names to their corresponding file paths or callables.
         """
-        script_dir = os.path.dirname(os.path.abspath(__file__))
         self.scripts = {
             # Daily Scripts
-            "Employee Birthday Email": os.path.join(script_dir, "daily_tasks", "birthday.py"),
+            "Employee Birthday Email": daily_tasks.birthday.main,  # Callable
             # Weekly Scripts
-            "Caregiver ID Exp": os.path.join(script_dir, "weekly_tasks", "in_emp_id_exp.py"),
-            "IN Emp EVAL EXP": os.path.join(script_dir, "weekly_tasks", "indy_emp_eval.py"),
-            "IN Emp In-Services EXP": os.path.join(script_dir, "weekly_tasks", "in_emp_inservices_exp.py"),
-            "IN PAT SUP EXP": os.path.join(script_dir, "weekly_tasks", "in_pat_sup_exp.py"),
-            "Pending Admission": os.path.join(script_dir, "weekly_tasks", "pending_admission.py"),
-            "Pending Caregiver Assignment": os.path.join(script_dir, "weekly_tasks", "pending_caregiver_assignment.py"),
-            "Pending IHCC Admission": os.path.join(script_dir, "weekly_tasks", "pending_IHCC_admission.py"),
-            "Pending PERS Installation": os.path.join(script_dir, "weekly_tasks", "pending_PERS_Installation.py"),
-            "SB EMP EVAL EXP": os.path.join(script_dir, "weekly_tasks", "sb_emp_eval.py"),
-            "SB Emp Inservices Exp": os.path.join(script_dir, "weekly_tasks", "sb_emp_inservices_exp.py"),
-            "SB ID EXP": os.path.join(script_dir, "weekly_tasks", "sb_emp_id_exp.py"),
-            "SB PAT SUP EXP": os.path.join(script_dir, "weekly_tasks", "sb_pat_sup_exp.py"),
+            "Caregiver ID Exp": weekly_tasks.in_emp_id_exp.extract_expiring_employees,
+            "IN Emp EVAL EXP": weekly_tasks.indy_emp_eval.extract_evaluation_expirations,
+            "IN Emp In-Services EXP": weekly_tasks.in_emp_inservices_exp.extract_evaluation_expirations,
+            "IN PAT SUP EXP": weekly_tasks.in_pat_sup_exp.run_task,
+            "Pending Admission": weekly_tasks.pending_admission.main,
+            "Pending Caregiver Assignment": weekly_tasks.pending_caregiver_assignment.main,
+            "Pending IHCC Admission": weekly_tasks.pending_IHCC_admission.main,
+            "Pending PERS Installation": weekly_tasks.pending_PERS_installation.main,
+            "SB EMP EVAL EXP": weekly_tasks.sb_emp_eval.extract_evaluation_expirations,
+            "SB Emp Inservices Exp": weekly_tasks.sb_emp_inservices_exp.extract_evaluation_expirations,
+            "SB ID EXP": weekly_tasks.sb_emp_id_exp.extract_expiring_employees,
+            "SB PAT SUP EXP": weekly_tasks.sb_pat_sup_exp.extract_evaluation_expirations,
+            
             # Monthly Scripts
-            "Age Notification": os.path.join(script_dir, "monthly_tasks", "age.py"),
-            "Employee Attrition": os.path.join(script_dir, "monthly_tasks", "employee_attrition.py"),
-            "Expired NOAs": os.path.join(script_dir, "monthly_tasks", "NOA_exp.py"),
-            "Inventory Request": os.path.join(script_dir, "monthly_tasks", "inventory_request.py"),
-            "Next Months Expired NOAs": os.path.join(script_dir, "monthly_tasks", "next_month_NOA_exp.py"),
-            "Patient Attrition": os.path.join(script_dir, "monthly_tasks", "patient_attrition_email.py"),
-            "Employee Attrition": os.path.join(script_dir, "monthly_tasks", "employee_attrition_email.py")
+            "Age Notification": monthly_tasks.age.main,
+            "Employee Attrition Email": monthly_tasks.employee_attrition_email.main,
+            "Expired NOAs": monthly_tasks.NOA_exp.main,
+            "Next Months Expired NOAs": monthly_tasks.next_month_NOA_exp.main,
+            "Patient Attrition": monthly_tasks.patient_attrition_email.main,
+            # Add more scripts as needed
         }
 
     def initialize_ui(self):
         """
         Initializes and sets up all UI components.
         """
-        # Define the custom style sheet for tabs
+        # Create a layout for the entire window
         tab_style = """
             QTabWidget::pane {
                 border: none;
@@ -327,9 +500,107 @@ class MainApp(QWidget):
             }
 
             QTabBar::tab:selected {
-                background: #A0C4FF; /* Same as the header color */
+                background: #207544;
                 font-weight: bold;
-                color: #d9e6f2; /* Slightly darkened text color */
+                color: white;
+                margin-top: 0px;
+            }
+
+            QTabBar::tab:!selected {
+                margin-top: 2px;
+            }
+        """
+
+        self.main_layout = QVBoxLayout(self)
+
+        # Create a toggle button for switching between Absolute and Ability
+        self.toggle_button = QPushButton("Absolute", self)
+        self.toggle_button.setCheckable(True)
+        self.toggle_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #207544;
+                border-radius: 15px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: bold;
+                color: white;
+            }
+            QPushButton:checked {
+                background-color: #7e07a0;
+            }
+        """
+        )
+        self.toggle_button.clicked.connect(self.switch_mode)
+
+        # Add the toggle button to the top of the layout
+        self.main_layout.addWidget(self.toggle_button, alignment=Qt.AlignCenter)
+
+        # Create a QTabWidget for switching between tabs
+        self.tab_widget = QTabWidget(self)
+
+        # Apply the custom style sheet to the QTabWidget
+        self.tab_widget.setStyleSheet(tab_style)
+
+        # Setup the default Absolute side with tabs on the left
+        self.setup_scripts_tab()
+        self.setup_dashboard_tab()
+        self.setup_graph_tab()
+
+        # Add the tab widget to the layout
+        self.main_layout.addWidget(self.tab_widget)
+
+        self.setLayout(self.main_layout)
+
+        # Initial state is Absolute
+        self.is_ability_mode = False
+
+    def switch_mode(self):
+        """
+        Switches between 'Absolute' mode and 'Ability' mode.
+        """
+        if self.toggle_button.isChecked():
+            # Switch to Ability mode
+            self.toggle_button.setText("Ability")
+            self.is_ability_mode = True
+
+            # Hide the Absolute tabs and show Ability tabs on the right side
+            self.tab_widget.clear()  # Clear the existing tabs
+            # setup_ability_mode_tabs(self)  # Setup Ability tabs (Ensure this function is correctly implemented)
+
+        else:
+            # Switch back to Absolute mode
+            self.toggle_button.setText("Absolute")
+            self.is_ability_mode = False
+
+            # Hide the Ability tabs and show Absolute tabs on the left side
+            self.tab_widget.clear()  # Clear the existing tabs
+            self.tab_widget.setStyleSheet(
+                """QTabWidget::pane {
+                border: none;
+                background-color: #2e2e2e;
+            }
+
+            QTabBar::tab {
+                background: #3c3c3c;
+                color: white;
+                padding: 10px 20px;
+                border: 1px solid #444;
+                border-bottom: none;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+                margin-right: 2px;
+                font-family: "Segoe UI", sans-serif;
+                font-size: 14px;
+            }
+
+            QTabBar::tab:hover {
+                background: #505050;
+            }
+
+            QTabBar::tab:selected {
+                background: #207544;
+                font-weight: bold;
                 color: white;
                 margin-top: 0px;
             }
@@ -338,21 +609,10 @@ class MainApp(QWidget):
                 margin-top: 2px;
             }
             """
-
-        # Create a QTabWidget for switching between tabs
-        self.tab_widget = QTabWidget(self)
-
-        # Apply the custom style sheet to the QTabWidget
-        self.tab_widget.setStyleSheet(tab_style)
-
-        # Setup Individual Tabs
-        self.setup_scripts_tab()
-        self.setup_dashboard_tab()
-        self.setup_graph_tab()
-
-        main_layout = QVBoxLayout(self)
-        main_layout.addWidget(self.tab_widget)
-        self.setLayout(main_layout)
+            )
+            self.setup_scripts_tab()  # Setup Absolute tabs
+            self.setup_dashboard_tab()
+            self.setup_graph_tab()
 
     # ---------------------------------
     # Scripts Tab Setup
@@ -372,31 +632,39 @@ class MainApp(QWidget):
 
         # "Categories" Header
         categories_header = QLabel("Categories")
-        categories_header.setStyleSheet("""
+        categories_header.setStyleSheet(
+            """
             QLabel {
                 font-size: 18pt;
                 font-weight: bold;
-                color: #A0C4FF;
+                color: #207544;
             }
-        """)
+        """
+        )
         self.category_layout.addWidget(categories_header, alignment=Qt.AlignCenter)
 
         # Create Main Category Buttons as Toggles
         self.daily_button = self.create_category_button("Daily", daily_items, "daily")
-        self.weekly_button = self.create_category_button("Weekly", weekly_items, "weekly")
-        self.monthly_button = self.create_category_button("Monthly", monthly_items, "monthly")
+        self.weekly_button = self.create_category_button(
+            "Weekly", weekly_items, "weekly"
+        )
+        self.monthly_button = self.create_category_button(
+            "Monthly", monthly_items, "monthly"
+        )
 
         self.category_layout.addWidget(self.daily_button)
         self.category_layout.addWidget(self.weekly_button)
         self.category_layout.addWidget(self.monthly_button)
 
         # Add Stretch to Push Buttons to the Top
-        self.category_layout.addStretch()  # Corrected: Add stretch to the layout, not the button
+        self.category_layout.addStretch()
 
         # Container for Category Buttons
         self.category_container = QWidget()
         self.category_container.setLayout(self.category_layout)
-        self.category_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.category_container.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Preferred
+        )
         scripts_layout.addWidget(self.category_container)
 
         # Scripts Buttons Layout
@@ -406,26 +674,26 @@ class MainApp(QWidget):
 
         # "Scripts" Header
         scripts_header = QLabel("Scripts")
-        scripts_header.setStyleSheet("""
+        scripts_header.setStyleSheet(
+            """
             QLabel {
                 font-size: 18pt;
                 font-weight: bold;
-                color: #A0C4FF; 
+                color: #207544; 
                 margin-top: 6px;
             }
-        """)
+        """
+        )
         self.script_layout.addWidget(scripts_header, alignment=Qt.AlignCenter)
 
         # Container for Sub-Category Buttons
         self.button_container = QWidget()
         self.button_layout = QVBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
-
         self.button_layout.setSpacing(10)
         self.button_layout.setAlignment(Qt.AlignTop)
-
         self.button_container.setLayout(self.button_layout)
-        self.button_container.setStyleSheet("background-color: grey;")
+        self.button_container.setStyleSheet("background-color: transparent;")
 
         # Scroll Area for Sub-Category Buttons
         self.scroll_area = QScrollArea()
@@ -434,8 +702,6 @@ class MainApp(QWidget):
         self.scroll_area.setWidget(self.button_container)
         self.scroll_area.setStyleSheet("background-color: transparent;")
         self.scroll_area.setMinimumWidth(350)
-
-        # Transparent background for scroll area
 
         self.script_layout.addWidget(self.scroll_area, alignment=Qt.AlignHCenter)
 
@@ -450,10 +716,12 @@ class MainApp(QWidget):
         # Animation Label
         self.animation_label = QLabel(self)
         self.animation_label.setFixedSize(100, 100)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        loading_gif_path = os.path.join(script_dir, "resources", "loading.gif")
-        if not os.path.exists(loading_gif_path):
-            print(f"Loading GIF not found at {loading_gif_path}. Please ensure the file exists.")
+
+        # Use the get_resource_path method to handle paths correctly
+        loading_gif_path = self.get_resource_path(
+            os.path.join("resources", "loading.gif")
+        )
+
         self.animation_movie = QMovie(loading_gif_path)
         self.animation_label.setMovie(self.animation_movie)
         self.animation_label.setAlignment(Qt.AlignCenter)
@@ -468,51 +736,81 @@ class MainApp(QWidget):
 
         # Log Area
         self.log_label = QLabel("Script Output:")
-        self.log_label.hide()  # Hide initially
+        # self.log_label.hide()  # Hide initially
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
         self.log_text.setFixedWidth(400)
         self.log_text.setFixedHeight(400)
-        self.log_text.hide()  # Hide initially
-        self.log_text.setStyleSheet("""
+        # self.log_text.hide()  # Hide initially
+        self.log_text.setStyleSheet(
+            """
             QTextEdit {
                 background-color: #2e2e2e;
                 color: white;
                 font-family: Consolas;
                 font-size: 12pt;
             }
-        """)
+        """
+        )
 
         # Add Components to Indicators Layout
-        self.indicator_layout.addWidget(self.animation_label, alignment=Qt.AlignCenter)
+        self.indicator_layout.addWidget(
+            self.animation_label, alignment=Qt.AlignCenter
+        )
         self.indicator_layout.addWidget(self.cancel_button, alignment=Qt.AlignCenter)
         self.indicator_layout.addWidget(self.log_label, alignment=Qt.AlignLeft)
         self.indicator_layout.addWidget(self.log_text, alignment=Qt.AlignCenter)
 
         # Spacer to Push Indicators to the Top
-        self.indicator_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+        self.indicator_layout.addSpacerItem(
+            QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        )
 
         # Container for Indicators
         self.indicator_container = QWidget()
         self.indicator_container.setLayout(self.indicator_layout)
-        self.indicator_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.indicator_container.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Preferred
+        )
         scripts_layout.addWidget(self.indicator_container)
 
         # State to Track Expanded Categories
-        self.expanded_categories = {
-            "Daily": False,
-            "Weekly": False,
-            "Monthly": False
-        }
+        self.expanded_categories = {"Daily": False, "Weekly": False, "Monthly": False}
 
         # Initialize Category Styles
         self.update_category_styles()
 
-        # Dictionary to Map Script Names to Their Paths
-        self.initialize_scripts_mapping()
-
         # Add Scripts Tab to QTabWidget
         self.tab_widget.addTab(self.scripts_tab, "Scripts")
+
+    def cancel_process(self):
+        """
+        Cancels the currently running script process.
+        """
+        if self.process and self.process.state() == QProcess.Running:
+            self.process.kill()
+            self.process = None  # Reset the process reference
+            self.timer.stop()
+            self.pending_scripts = []
+            timeout_message = (
+                "<span style='color: orange;'>Script execution has been cancelled.</span><br>"
+            )
+            self.log_signal.emit("orange", timeout_message)
+
+            # Update Status to 'failed'
+            if self.current_script_name:
+                self.script_results[self.current_script_name] = "failed"
+                if self.current_script_name in self.script_buttons:
+                    self.script_buttons[self.current_script_name].set_status("failed")
+
+            # Hide Execution Indicators
+            self.hide_execution_indicators()
+
+            # Re-enable Buttons
+            self.set_buttons_enabled(True)
+
+            # Show Summary
+            self.show_summary()
 
     def create_category_button(self, text, items, identifier):
         """
@@ -583,6 +881,7 @@ class MainApp(QWidget):
         Args:
             items (list): The list of sub-category items to create buttons for.
         """
+
         for item in items:
             button = QPushButton(item, self)
             button.setFixedWidth(300)  # Fixed width for consistency
@@ -603,17 +902,29 @@ class MainApp(QWidget):
             else:
                 # Configure Individual Script Button
                 if item in self.scripts:
-                    script_path = self.scripts[item]
-                    button.clicked.connect(
-                        lambda checked, path=script_path, name=item: self.run_single_script(path, name)
-                    )
+                    script = self.scripts[item]
+                    if callable(script):
+                        # Connect to run_single_script for callable scripts
+                        button.clicked.connect(
+                            lambda checked, func=script, name=item: self.run_single_script(
+                                func, name
+                            )
+                        )
+                    else:
+                        # Connect to run_script for path-based scripts
+                        button.clicked.connect(
+                            lambda checked, path=script, name=item: self.run_script(
+                                path, name
+                            )
+                        )
                 else:
                     button.clicked.connect(self.show_message)
                 script_widget = ScriptButtonWidget(item, button, has_status=True)
                 self.script_buttons[item] = script_widget
 
             # Apply Stylesheet
-            button.setStyleSheet("""
+            button.setStyleSheet(
+                """
                 QPushButton {
                     background-color: #ffffff;
                     border: 1px solid #cccccc;
@@ -626,15 +937,18 @@ class MainApp(QWidget):
                     background-color: #e6e6e6;
                 }
                 QPushButton:checked {
-                    background-color: #a0c4ff;
+                    background-color: #207544;
                     border: 1px solid #89a4ff;
-                    color: black;
+                    color: white;
                 }
-            """)
+            """
+            )
             button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
             # Connect Selection Handler
-            button.clicked.connect(lambda checked, btn=button: self.select_subcategory(btn))
+            button.clicked.connect(
+                lambda checked, btn=button: self.select_subcategory(btn)
+            )
 
             # Add to Layout
             self.button_layout.addWidget(script_widget, alignment=Qt.AlignLeft)
@@ -646,7 +960,10 @@ class MainApp(QWidget):
         Args:
             button (QPushButton): The button that was clicked.
         """
-        if self.selected_subcategory_button and self.selected_subcategory_button != button:
+        if (
+            self.selected_subcategory_button
+            and self.selected_subcategory_button != button
+        ):
             self.selected_subcategory_button.setChecked(False)
 
         if button.isChecked():
@@ -704,26 +1021,49 @@ class MainApp(QWidget):
         Args:
             splitter (QSplitter): The splitter to add the left-side widget to.
         """
-        custom_programs = {
-            "Active Patients per Month": "Admission_by_Month.py",
-            "View Patient Data": "patient_data_extractor.py",
-            "Active Contractor per Month": "Caregiver_by_Month.py",
-            "View Contractor Data": "caregiver_data_extractor.py",
-            "View Employee Records Data": "employee_records_data_extractor.py",
-            "Employee Records Hours": "Employee_Records_by_Month.py",
-            "Active Admission Count by Service": "Active_Admission_by_Service.py",
-            "View Billing Data" : "billing_files_extractor.py",
-            "Patient Tenure" : "Patient_Tenure_by_Group.py",
-            "Patient Attrition" : "../monthly_tasks/patient_attrition.py",
-            "Employee Attrition" : "../monthly_tasks/employee_attrition.py"
-        }
+
+        if self.is_ability_mode:
+            custom_programs = {"Example Ability Script": "example_script.py"}
+        else:
+            custom_programs = {
+                "Active Patients per Month": "Admission_by_Month.py",
+                "View Patient Data": "patient_data_extractor.py",
+                "Active Contractor per Month": "Caregiver_by_Month.py",
+                "View Contractor Data": "caregiver_data_extractor.py",
+                "View Employee Records Data": "employee_records_data_extractor.py",
+                "Employee Records Hours": "Employee_Records_by_Month.py",
+                "Active Admission Count by Service": "Active_Admission_by_Service.py",
+                "View Billing Data": "billing_files_extractor.py",
+                "Patient Tenure": "Patient_Tenure_by_Group.py",
+                "Patient Attrition": "../monthly_tasks/patient_attrition.py",
+                "Employee Attrition": "../monthly_tasks/employee_attrition.py",
+                "Paysource Patient Count": "Paysource_Patient_count.py",
+            }
 
         button_container = QWidget()
         button_layout = QVBoxLayout(button_container)
 
         for button_label, program in custom_programs.items():
             button = QPushButton(button_label)
-            button.clicked.connect(lambda checked, prog=program: self.run_python_script(prog))
+            button.clicked.connect(
+                lambda checked, prog=program: self.run_python_script(prog)
+            )
+            # Apply Stylesheet for consistency
+            button.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #ffffff;
+                    border: 1px solid #cccccc;
+                    border-radius: 8px;
+                    padding: 10px;
+                    text-align: center;
+                    color: black;
+                }
+                QPushButton:hover {
+                    background-color: #e6e6e6;
+                }
+                """
+            )
             button_layout.addWidget(button)
 
         button_container.setLayout(button_layout)
@@ -744,7 +1084,7 @@ class MainApp(QWidget):
         """
         Sets up the right-side layout for displaying the DataFrame and includes a Gaussian blur
         and loading bar while retrieving data.
-        
+
         Args:
             splitter (QSplitter): The splitter to add the right-side widget to.
         """
@@ -752,25 +1092,31 @@ class MainApp(QWidget):
         self.table_widget = CustomTableWidget()
         self.table_widget.setColumnCount(0)
         self.table_widget.setRowCount(0)
-        self.table_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)  # Allow multiple selections
-        self.table_widget.setSelectionBehavior(QAbstractItemView.SelectItems)  # Item selection behavior
+        self.table_widget.setSelectionMode(
+            QAbstractItemView.ExtendedSelection
+        )  # Allow multiple selections
+        self.table_widget.setSelectionBehavior(
+            QAbstractItemView.SelectItems
+        )  # Item selection behavior
 
         # Apply styles to show cell selection clearly
-        self.table_widget.setStyleSheet("""
+        self.table_widget.setStyleSheet(
+            """
             QTableWidget {
                 background-color: #f0f0f0;
                 color: black;
             }
             QTableWidget::item:selected {
-                background-color: #A0C4FF; /* Custom color for selected cells */
-                color: black; /* Text color for selected cells */
+                background-color: #207544; /* Custom color for selected cells */
+                color: white; /* Text color for selected cells */
                
             }
             QTableWidget::item {
                 background-color: white; /* Normal cell background */
                 color: black; /* Normal cell text color */
             }
-        """)
+        """
+        )
 
         # Container to hold the table and blur/loading elements
         self.right_side_widget = QWidget()
@@ -781,23 +1127,27 @@ class MainApp(QWidget):
         self.loading_bar.setRange(0, 0)  # Indeterminate progress bar
         self.loading_bar.setTextVisible(False)
         self.loading_bar.setFixedHeight(30)
-        self.loading_bar.setStyleSheet("""
+        self.loading_bar.setStyleSheet(
+            """
             QProgressBar {
                 background-color: #e0e0e0;
                 border: none;
             }
             QProgressBar::chunk {
-                background-color: #A0C4FF;
+                background-color: #207544;
             }
-        """)
+        """
+        )
 
         # "Retrieving Data" label
-        self.retrieving_data_label = QLabel("Retrieving data...", self.right_side_widget)
+        self.retrieving_data_label = QLabel(
+            "Retrieving data...", self.right_side_widget
+        )
         self.retrieving_data_label.setAlignment(Qt.AlignCenter)
         self.retrieving_data_label.setStyleSheet(
             """
             QLabel {
-                color: #A0C4FF;
+                color: #207544;
                 font-size: 16pt;
                 font-weight: bold;
             }
@@ -823,7 +1173,7 @@ class MainApp(QWidget):
 
     def setup_dashboard_bottom_buttons(self):
         """
-        Sets up the bottom buttons (Save DataFrame, Copy Selected) for the Dashboard tab.
+        Sets up the bottom buttons (Save DataFrame) for the Dashboard tab.
         """
         bottom_buttons_layout = QHBoxLayout()
         bottom_buttons_layout.setAlignment(Qt.AlignRight)
@@ -831,10 +1181,25 @@ class MainApp(QWidget):
         # Save DataFrame Button
         self.save_dataframe_button = QPushButton("Export to CSV")
         self.save_dataframe_button.clicked.connect(self.save_dataframe)
+        self.save_dataframe_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #207544;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #28a05e;
+            }
+            """
+        )
 
         # Add Buttons to Layout
         bottom_buttons_layout.addWidget(self.save_dataframe_button)
-        
 
         # Add Bottom Buttons Layout to Secondary Layout
         self.secondary_layout.addLayout(bottom_buttons_layout)
@@ -874,63 +1239,66 @@ class MainApp(QWidget):
         controls_layout.setContentsMargins(20, 20, 20, 20)
         controls_layout.setSpacing(15)
 
+        # Helper function to set label styles
+        def set_label_style(label):
+            color = "#7e07a0" if self.is_ability_mode else "#207544"
+            label.setStyleSheet(
+                f"""
+                QLabel {{
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: {color};
+                }}
+                """
+            )
+
         # X-axis Selection
         self.x_axis_label = QLabel("Select X-axis:")
-        self.x_axis_label.setStyleSheet("""
-            QLabel {
-                font-size: 14pt;
-                font-weight: bold;
-                color: #A0C4FF;
-            }
-        """)
+        set_label_style(self.x_axis_label)
+
         self.x_axis_combo = QComboBox(self)
-        self.x_axis_combo.setStyleSheet("""
+        self.x_axis_combo.setStyleSheet(
+            """
             QComboBox {
                 padding: 5px;
                 font-size: 12pt;
             }
-        """)
+        """
+        )
         controls_layout.addWidget(self.x_axis_label)
         controls_layout.addWidget(self.x_axis_combo)
 
         # Y-axis Selection
         self.y_axis_label = QLabel("Select Y-axis:")
-        self.y_axis_label.setStyleSheet("""
-            QLabel {
-                font-size: 14pt;
-                font-weight: bold;
-                color: #A0C4FF;
-            }
-        """)
+        set_label_style(self.y_axis_label)
+
         self.y_axis_combo = QComboBox(self)
-        self.y_axis_combo.setStyleSheet("""
+        self.y_axis_combo.setStyleSheet(
+            """
             QComboBox {
                 padding: 5px;
                 font-size: 12pt;
             }
-        """)
+        """
+        )
         controls_layout.addWidget(self.y_axis_label)
         controls_layout.addWidget(self.y_axis_combo)
 
         # Label SpinBox
         self.label_spinbox_label = QLabel("Number of X-axis labels to display:")
-        self.label_spinbox_label.setStyleSheet("""
-            QLabel {
-                font-size: 14pt;
-                font-weight: bold;
-                color: #A0C4FF;
-            }
-        """)
+        set_label_style(self.label_spinbox_label)
+
         self.label_spinbox = QSpinBox(self)
         self.label_spinbox.setRange(1, 20)
         self.label_spinbox.setValue(6)
-        self.label_spinbox.setSuffix(" labels")
-        self.label_spinbox.setStyleSheet("""
+        self.label_spinbox.setStyleSheet(
+            """
             QSpinBox {
                 padding: 5px;
                 font-size: 12pt;
             }
-        """)
+        """
+        )
         controls_layout.addWidget(self.label_spinbox_label)
         controls_layout.addWidget(self.label_spinbox)
 
@@ -940,19 +1308,24 @@ class MainApp(QWidget):
         # Plot Graph Button
         self.plot_button = QPushButton("Plot Graph", self)
         self.plot_button.setFixedWidth(150)
-        self.plot_button.setStyleSheet("""
-            QPushButton {
-                background-color: #A0C4FF;
+
+        button_color = "#7e07a0" if self.is_ability_mode else "#207544"
+        button_hover = "#9b32bf" if self.is_ability_mode else "#28a05e"
+        self.plot_button.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {button_color};
                 border: none;
                 border-radius: 8px;
                 padding: 10px;
                 font-size: 14pt;
                 color: white;
-            }
-            QPushButton:hover {
-                background-color: #89A4FF;
-            }
-        """)
+            }}
+            QPushButton:hover {{
+                background-color: {button_hover};
+            }}
+        """
+        )
         self.plot_button.clicked.connect(self.plot_graph)
         controls_layout.addWidget(self.plot_button, alignment=Qt.AlignCenter)
 
@@ -970,29 +1343,118 @@ class MainApp(QWidget):
         graph_area_layout.setContentsMargins(20, 20, 20, 20)
         graph_area_layout.setSpacing(10)
 
-        # Matplotlib Canvas
-        self.canvas = MplCanvas(self, width=5, height=4, dpi=100)
-        self.canvas.setStyleSheet("""
+        # Matplotlib Canvas with fixed size
+        self.canvas = MplCanvas(
+            self, width=10, height=6, dpi=100
+        )  # Reduced width and height
+        self.canvas.setStyleSheet(
+            """
             background-color: #2e2e2e;
-        """)
+        """
+        )
         graph_area_layout.addWidget(self.canvas)
 
         # Add Graph Area Layout to Main Graph Layout
         graph_layout.addLayout(graph_area_layout, stretch=3)
 
-        # Initialize an Empty Axes
-        self.canvas.ax = self.canvas.figure.add_subplot(111)
-
     def apply_graph_styles(self):
         """
         Applies consistent styles to the graph area.
         """
-        self.canvas.figure.patch.set_facecolor('#2e2e2e')  # Dark background
-        self.canvas.ax.set_facecolor('#2e2e2e')  # Dark background for plot area
-        self.canvas.ax.tick_params(axis='x', colors='white')  # White ticks
-        self.canvas.ax.tick_params(axis='y', colors='white')
-        self.canvas.ax.xaxis.label.set_color('white')  # White labels
-        self.canvas.ax.yaxis.label.set_color('white')
+        # Set the figure and axes background
+        self.canvas.figure.patch.set_facecolor(
+            "#2e2e2e"
+        )  # Dark background for the figure
+        self.canvas.ax.set_facecolor("#2e2e2e")  # Dark background for the plot area
+
+        # Set tick parameters
+        self.canvas.ax.tick_params(axis="x", colors="white")  # White ticks for X-axis
+        self.canvas.ax.tick_params(axis="y", colors="white")  # White ticks for Y-axis
+
+        # Set axis labels color
+        self.canvas.ax.xaxis.label.set_color("white")  # White X-axis label
+        self.canvas.ax.yaxis.label.set_color("white")  # White Y-axis label
+
+        # Set spines (axis lines) color to white
+        for spine in self.canvas.ax.spines.values():
+            spine.set_edgecolor("white")
+
+        # Set tick label colors and sizes
+        self.canvas.ax.tick_params(
+            axis="both", which="major", labelsize=10, colors="white"
+        )
+
+        # Refresh the canvas
+        self.canvas.draw()
+
+    def plot_graph(self):
+        """
+        Plots the graph based on the selected parameters.
+        """
+        if not hasattr(self, "df") or self.df.empty:
+            QMessageBox.warning(
+                self,
+                "No Data",
+                "No data available to plot. Please run a script to load data.",
+            )
+            return
+
+        # Clear Previous Plot
+        self.canvas.ax.clear()
+
+        # Get Selected Columns
+        x_column = self.x_axis_combo.currentText()
+        y_column = self.y_axis_combo.currentText()
+
+        if not x_column or not y_column:
+            QMessageBox.warning(
+                self, "Selection Error", "Please select both X and Y axes."
+            )
+            return
+
+        # Get Number of Labels to Display
+        max_labels = self.label_spinbox.value()
+
+        try:
+            x_data = self.df[x_column]
+            y_data = self.df[y_column]
+
+            # Scatter Plot
+            scatter_plot = self.canvas.ax.scatter(
+                x_data, y_data, picker=True, color="#207544"
+            )
+
+            # Set Axis Labels with Explicit White Color
+            self.canvas.ax.set_xlabel(x_column, color="white", fontsize=14)
+            self.canvas.ax.set_ylabel(y_column, color="white", fontsize=14)
+
+            # Configure X-axis Ticks and Labels
+            num_points = len(x_data)
+            step = max(1, num_points // max_labels)
+            tick_indices = range(0, num_points, step)
+            self.canvas.ax.set_xticks([x_data.iloc[i] for i in tick_indices])
+            self.canvas.ax.set_xticklabels(
+                [x_data.iloc[i] for i in tick_indices], ha="right", color="white"
+            )
+
+            # Configure Y-axis Tick Colors
+            self.canvas.ax.tick_params(axis="y", colors="white")
+
+            # Remove tight_layout to maintain fixed size
+            self.canvas.figure.tight_layout()
+
+            # Redraw Canvas
+            self.canvas.draw()
+
+            # Connect Click Event
+            self.canvas.mpl_connect("pick_event", self.on_click)
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Plot Error",
+                f"An error occurred while plotting the graph:\n{str(e)}",
+            )
 
     # ---------------------------------
     # DataFrame Handling
@@ -1038,21 +1500,29 @@ class MainApp(QWidget):
         """
         Opens a file dialog to save the displayed DataFrame as a CSV file.
         """
-        if not hasattr(self, 'df'):
+        if not hasattr(self, "df"):
             QMessageBox.warning(self, "Error", "No DataFrame to save.")
             return
 
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getSaveFileName(
-            self, "Save DataFrame", "", "CSV Files (*.csv);;All Files (*)", options=options
+            self,
+            "Save DataFrame",
+            "",
+            "CSV Files (*.csv);;All Files (*)",
+            options=options,
         )
 
         if file_name:
             try:
                 self.df.to_csv(file_name, index=False)
-                QMessageBox.information(self, "Success", f"DataFrame saved successfully to {file_name}")
+                QMessageBox.information(
+                    self, "Success", f"DataFrame saved successfully to {file_name}"
+                )
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to save DataFrame: {str(e)}")
+                QMessageBox.critical(
+                    self, "Error", f"Failed to save DataFrame: {str(e)}"
+                )
 
     # ---------------------------------
     # Script Execution Methods
@@ -1065,13 +1535,15 @@ class MainApp(QWidget):
         try:
             script_items = daily_items[1:]  # Exclude "Run All"
             self.pending_scripts = [
-                (item, self.scripts[item]) for item in script_items if item in self.scripts
+                (item, self.scripts[item])
+                for item in script_items
+                if item in self.scripts
             ]
 
-            self.script_results = {item: 'pending' for item, _ in self.pending_scripts}
+            self.script_results = {item: "pending" for item, _ in self.pending_scripts}
 
             for item in self.script_buttons:
-                self.script_buttons[item].set_status('pending')
+                self.script_buttons[item].set_status("pending")
 
             self.set_buttons_enabled(False)
 
@@ -1091,13 +1563,15 @@ class MainApp(QWidget):
         try:
             script_items = weekly_items[1:]  # Exclude "Run All"
             self.pending_scripts = [
-                (item, self.scripts[item]) for item in script_items if item in self.scripts
+                (item, self.scripts[item])
+                for item in script_items
+                if item in self.scripts
             ]
 
-            self.script_results = {item: 'pending' for item, _ in self.pending_scripts}
+            self.script_results = {item: "pending" for item, _ in self.pending_scripts}
 
             for item in self.script_buttons:
-                self.script_buttons[item].set_status('pending')
+                self.script_buttons[item].set_status("pending")
 
             self.set_buttons_enabled(False)
 
@@ -1117,14 +1591,15 @@ class MainApp(QWidget):
         try:
             script_items = monthly_items[1:]  # Exclude "Run All"
             self.pending_scripts = [
-                (item, self.scripts[item]) for item in script_items if item in self.scripts
+                (item, self.scripts[item])
+                for item in script_items
+                if item in self.scripts
             ]
 
-            self.script_results = {item: 'pending' for item, _ in self.pending_scripts}
+            self.script_results = {item: "pending" for item, _ in self.pending_scripts}
 
             for item in self.script_buttons:
-                if item in self.scripts:  # Ensure it's a monthly script
-                    self.script_buttons[item].set_status('pending')
+                self.script_buttons[item].set_status("pending")
 
             self.set_buttons_enabled(False)
 
@@ -1142,11 +1617,14 @@ class MainApp(QWidget):
         Runs the next script in the pending_scripts list.
         """
         if self.pending_scripts:
-            next_script_name, next_script_path = self.pending_scripts.pop(0)
+            next_script_name, next_script = self.pending_scripts.pop(0)
             self.current_script_name = next_script_name
-            self.run_script(next_script_path, next_script_name)
+            if callable(next_script):
+                self.run_single_script(next_script, next_script_name)
+            else:
+                self.run_script(next_script, next_script_name)
         else:
-            self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
+            self.log_signal.emit("green", "<span>All scripts executed.</span>")
             self.show_summary()
 
     def run_script(self, script_path, script_name):
@@ -1159,22 +1637,33 @@ class MainApp(QWidget):
         """
         try:
             if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
+                QMessageBox.critical(
+                    self, "Error", f"Script not found at {script_path}"
+                )
                 self.run_next_script()
                 return
 
-            self.script_results[script_name] = 'running'
-            self.script_buttons[script_name].set_status('running')
+            self.script_results[script_name] = "running"
+            self.script_buttons[script_name].set_status("running")
             self.highlight_active_button(script_name)
 
+            # Assign the QProcess instance to self.process
             self.process = QProcess(self)
             self.process.setProgram(sys.executable)
-            self.process.setArguments(['-u', script_path])
+            self.process.setArguments(["-u", script_path])
 
             # Connect Signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
+            self.process.readyReadStandardOutput.connect(
+                lambda: self.handle_process_stdout(self.process)
+            )
+            self.process.readyReadStandardError.connect(
+                lambda: self.handle_process_stderr(self.process)
+            )
+            self.process.finished.connect(
+                lambda exitCode, exitStatus: self.process_finished(
+                    self.process, exitCode, exitStatus, script_name
+                )
+            )
 
             # Start Timeout Timer
             self.timer.start()
@@ -1186,91 +1675,54 @@ class MainApp(QWidget):
             QMessageBox.critical(self, "Exception", f"An error occurred:\n{str(e)}")
             self.run_next_script()
 
-    def run_single_script(self, script_path, script_name):
-        """
-        Executes a single script and handles its execution state.
-
-        Args:
-            script_path (str): The path to the script to execute.
-            script_name (str): The name of the script.
-        """
-        try:
-            if not os.path.exists(script_path):
-                QMessageBox.critical(self, "Error", f"Script not found at {script_path}")
-                return
-
-            # Reset Status Icons
-            self.script_buttons[script_name].set_status('pending')
-            self.script_results = {script_name: 'pending'}
-
-            # Disable Sub-Category Buttons
-            self.set_buttons_enabled(False)
-
-            # Show Execution Indicators
-            self.show_execution_indicators()
-            self.log_text.clear()
-
-            # Update Status to 'running'
-            self.script_buttons[script_name].set_status('running')
-            self.highlight_active_button(script_name)
-            self.current_script_name = script_name
-
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            self.process.setArguments(['-u', script_path])
-
-            # Connect Signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
-
-            # Start Timeout Timer
-            self.timer.start()
-
-            # Start Process
-            self.process.start()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Exception", f"An error occurred while executing the script:\n{str(e)}")
-            self.reset_execution_state()
-
-    def handle_stdout(self):
+    def handle_process_stdout(self, process):
         """
         Handles standard output from the running process and appends it to the log area.
-        """
-        if self.process:
-            data = bytes(self.process.readAllStandardOutput()).decode('utf-8')
-            formatted_data = data.replace('\n', '<br>')
-            self.log_text.append(f"<span style='color: white;'>{formatted_data}</span>")
 
-    def handle_stderr(self):
+        Args:
+            process (QProcess): The QProcess instance.
+        """
+        data = bytes(process.readAllStandardOutput()).decode("utf-8")
+        if data:
+            self.log_signal.emit("white", data)
+
+    def handle_process_stderr(self, process):
         """
         Handles standard error from the running process and appends it to the log area.
+
+        Args:
+            process (QProcess): The QProcess instance.
         """
-        if self.process:
-            data = bytes(self.process.readAllStandardError()).decode('utf-8')
-            formatted_data = data.replace('\n', '<br>')
-            self.log_text.append(f"<span style='color: red;'>{formatted_data}</span>")
+        data = bytes(process.readAllStandardError()).decode("utf-8")
+        if data:
+            self.log_signal.emit("red", data)
 
     @Slot(int, QProcess.ExitStatus)
-    def process_finished(self, exitCode, exitStatus):
+    def process_finished(self, process, exitCode, exitStatus, script_name):
         """
         Handles the completion of the script process.
 
         Args:
+            process (QProcess): The QProcess instance.
             exitCode (int): The exit code of the process.
             exitStatus (QProcess.ExitStatus): The exit status.
+            script_name (str): The name of the script.
         """
         self.timer.stop()
         if exitCode == 0:
-            self.log_text.append(f"<span style='color: green;'>Script '{self.current_script_name}' executed successfully.</span>")
-            self.script_results[self.current_script_name] = 'success'
-            self.script_buttons[self.current_script_name].set_status('success')
+            self.log_signal.emit(
+                "green",
+                f"<span>Script '{script_name}' executed successfully.</span>",
+            )
+            self.script_results[script_name] = "success"
+            self.script_buttons[script_name].set_status("success")
         else:
-            self.log_text.append(f"<span style='color: red;'>Script '{self.current_script_name}' failed with exit code {exitCode}.</span>")
-            self.script_results[self.current_script_name] = 'failed'
-            self.script_buttons[self.current_script_name].set_status('failed')
+            self.log_signal.emit(
+                "red",
+                f"<span>Script '{script_name}' failed with exit code {exitCode}.</span>",
+            )
+            self.script_results[script_name] = "failed"
+            self.script_buttons[script_name].set_status("failed")
 
         # Reset Button Highlights
         self.highlight_active_button(None)
@@ -1281,7 +1733,7 @@ class MainApp(QWidget):
         else:
             # All scripts have been executed
             self.hide_execution_indicators()
-            self.log_text.append("<span style='color: green;'>All scripts executed.</span>")
+            self.log_signal.emit("green", "All scripts executed.")
             self.show_summary()
 
         # Re-enable Buttons only if no more scripts are running
@@ -1293,75 +1745,83 @@ class MainApp(QWidget):
             self.selected_subcategory_button.setChecked(False)
             self.selected_subcategory_button = None
 
-    def show_summary(self):
+    def run_single_script(self, script_function, script_name):
         """
-        Displays a summary of script execution results.
+        Executes a single script function using QThread and captures its output.
+
+        Args:
+            script_function (callable): The function to execute.
+            script_name (str): The name of the script.
         """
-        summary = "Script Execution Summary:\n\n"
-        for script_name, result in self.script_results.items():
-            summary += f"{script_name}: {result.capitalize()}\n"
-        QMessageBox.information(self, "Summary", summary)
+        # Reset Status Icons
+        self.script_buttons[script_name].set_status("pending")
+        self.script_results = {script_name: "pending"}
 
-    def cancel_process(self):
+        # Disable Sub-Category Buttons
+        self.set_buttons_enabled(False)
+
+        # Show Execution Indicators
+        self.show_execution_indicators()
+        self.log_text.clear()
+
+        # Update Status to 'running'
+        self.script_buttons[script_name].set_status("running")
+        self.highlight_active_button(script_name)
+        self.current_script_name = script_name
+
+        # Log the start of script execution
+        self.log_signal.emit("white", f"<b>Starting script:</b> {script_name}<br>")
+
+        # Create worker and thread
+        self.script_thread = QThread()
+        self.script_worker = ScriptWorker(script_function, script_name)
+        self.script_worker.moveToThread(self.script_thread)
+
+        # Connect signals
+        self.script_worker.log.connect(self.append_log)
+        self.script_worker.finished.connect(self.on_script_finished)
+        self.script_worker.result_ready.connect(self.display_dataframe)
+
+        self.script_thread.started.connect(self.script_worker.run)
+        self.script_worker.finished.connect(self.script_thread.quit)
+        self.script_worker.finished.connect(self.script_worker.deleteLater)
+        self.script_thread.finished.connect(self.script_thread.deleteLater)
+
+        # Start thread
+        self.script_thread.start()
+
+    def on_script_finished(self, script_name, status):
         """
-        Cancels the currently running script process.
+        Handles the completion of the script execution.
         """
-        if self.process and self.process.state() == QProcess.Running:
-            self.process.kill()
-            self.process = None
-            self.timer.stop()
-            self.pending_scripts = []
-            self.log_text.append("<span style='color: orange;'>Script execution has been cancelled.</span>")
+        self.script_results[script_name] = status
+        self.script_buttons[script_name].set_status(status)
 
-            # Update Status to 'failed'
-            if self.current_script_name:
-                self.script_results[self.current_script_name] = 'failed'
-                self.script_buttons[self.current_script_name].set_status('failed')
+        # Reset button highlights
+        self.highlight_active_button(None)
 
-            # Hide Execution Indicators
-            self.hide_execution_indicators()
+        # Hide execution indicators
+        self.hide_execution_indicators()
 
-            # Re-enable Buttons
-            self.set_buttons_enabled(True)
+        # Re-enable buttons
+        self.set_buttons_enabled(True)
 
-            # Show Summary
-            self.show_summary()
+        # Show summary
+        self.show_summary()
 
-    def handle_timeout(self):
-        """
-        Handles the event when a script execution times out.
-        """
-        if self.process and self.process.state() == QProcess.Running:
-            self.process.kill()
-            self.process = None
-            self.timer.stop()
-            self.pending_scripts = []
-            self.log_text.append(f"<span style='color: orange;'>Script '{self.current_script_name}' timed out.</span>")
-
-            # Update Status to 'failed'
-            self.script_results[self.current_script_name] = 'failed'
-            self.script_buttons[self.current_script_name].set_status('failed')
-
-            # Hide Execution Indicators
-            self.hide_execution_indicators()
-
-            # Re-enable Buttons
-            self.set_buttons_enabled(True)
-
-            if self.pending_scripts:
-                self.run_next_script()
-            else:
-                self.show_summary()
+    # ---------------------------------
+    # Script Execution Utilities
+    # ---------------------------------
 
     def show_execution_indicators(self):
         """
-        Shows the loading animation, cancel button, and log area.
+        Displays the loading animation, cancel button, and log area.
         """
         self.animation_label.show()
         self.animation_movie.start()
         self.cancel_button.show()
-        self.log_text.show()
         self.log_label.show()
+        self.log_text.show()
 
     def hide_execution_indicators(self):
         """
@@ -1370,6 +1830,8 @@ class MainApp(QWidget):
         self.animation_movie.stop()
         self.animation_label.hide()
         self.cancel_button.hide()
+        self.log_label.hide()
+        self.log_text.hide()
 
     def reset_execution_state(self):
         """
@@ -1397,60 +1859,6 @@ class MainApp(QWidget):
     # ---------------------------------
     # Graph Functionality
     # ---------------------------------
-
-    def plot_graph(self):
-        """
-        Plots the graph with the selected X and Y axes.
-        """
-        if not hasattr(self, 'df') or self.df.empty:
-            QMessageBox.warning(self, "No Data", "No data available to plot. Please run a script to load data.")
-            return
-
-        # Clear Previous Plot
-        self.canvas.ax.clear()
-
-        # Get Selected Columns
-        x_column = self.x_axis_combo.currentText()
-        y_column = self.y_axis_combo.currentText()
-
-        if not x_column or not y_column:
-            QMessageBox.warning(self, "Selection Error", "Please select both X and Y axes.")
-            return
-
-        # Get Number of Labels to Display
-        max_labels = self.label_spinbox.value()
-
-        try:
-            x_data = self.df[x_column]
-            y_data = self.df[y_column]
-
-            # Scatter Plot
-            scatter_plot = self.canvas.ax.scatter(x_data, y_data, picker=True, color='#A0C4FF')
-
-            # Set Axis Labels
-            self.canvas.ax.set_xlabel(x_column)
-            self.canvas.ax.set_ylabel(y_column)
-
-            # Configure X-axis Ticks and Labels
-            num_points = len(x_data)
-            step = max(1, num_points // max_labels)
-            tick_indices = range(0, num_points, step)
-            self.canvas.ax.set_xticks([x_data[i] for i in tick_indices])
-            self.canvas.ax.set_xticklabels([x_data[i] for i in tick_indices], ha="right", color='white')
-
-            # Configure Y-axis Tick Colors
-            self.canvas.ax.tick_params(axis='y', colors='white')
-
-            self.canvas.figure.tight_layout()
-
-            # Redraw Canvas
-            self.canvas.draw()
-
-            # Connect Click Event
-            self.canvas.mpl_connect("pick_event", self.on_click)
-
-        except Exception as e:
-            QMessageBox.critical(self, "Plot Error", f"An error occurred while plotting the graph:\n{str(e)}")
 
     def on_click(self, event):
         """
@@ -1486,7 +1894,8 @@ class MainApp(QWidget):
             widget = self.script_buttons[item]
             if script_name is None:
                 # Reset to default style and uncheck the button
-                widget.button.setStyleSheet("""
+                widget.button.setStyleSheet(
+                    """
                     QPushButton {
                         background-color: #ffffff;
                         border: 1px solid #cccccc;
@@ -1499,31 +1908,38 @@ class MainApp(QWidget):
                         background-color: #e6e6e6;
                     }
                     QPushButton:checked {
-                        background-color: #a0c4ff;
-                        border: 1px solid #89a4ff;
-                        color: black;
+                        background-color: #207544;
+                        color: white;
                     }
-                """)
+                """
+                )
                 widget.button.setChecked(False)
             elif item == script_name:
                 # Highlight the active button
-                widget.button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #A0C4FF;
-                        border: 1px solid #cccccc;
+                if self.is_ability_mode:
+                    bg_color = "#7e07a0"
+                else:
+                    bg_color = "#207544"
+                widget.button.setStyleSheet(
+                    f"""
+                    QPushButton {{
+                        background-color: {bg_color};
+                        border: 1px solid #89a4ff;
                         border-radius: 8px;
                         padding: 10px;
                         text-align: center;
-                        color: black;
-                    }
-                    QPushButton:hover {
+                        color: white;
+                    }}
+                    QPushButton:hover {{
                         background-color: #89a4FF;
-                    }
-                """)
+                    }}
+                """
+                )
                 widget.button.setChecked(True)
             else:
                 # Reset other buttons to default style
-                widget.button.setStyleSheet("""
+                widget.button.setStyleSheet(
+                    """
                     QPushButton {
                         background-color: #ffffff;
                         border: 1px solid #cccccc;
@@ -1536,11 +1952,11 @@ class MainApp(QWidget):
                         background-color: #e6e6e6;
                     }
                     QPushButton:checked {
-                        background-color: #a0c4ff;
-                        border: 1px solid #89a4ff;
-                        color: black;
+                        background-color: #207544;
+                        color: white;
                     }
-                """)
+                """
+                )
                 widget.button.setChecked(False)
 
     def update_category_styles(self):
@@ -1566,38 +1982,15 @@ class MainApp(QWidget):
         elif category == "Monthly":
             self.monthly_button.setChecked(checked)
 
-    # ---------------------------------
-    # Script Execution Utilities
-    # ---------------------------------
+    def append_log(self, color, message):
+        """
+        Appends a message to the log_text with the specified color.
 
-    def show_execution_indicators(self):
+        Args:
+            color (str): The color of the text.
+            message (str): The message to append.
         """
-        Displays the loading animation, cancel button, and log area.
-        """
-        self.animation_label.show()
-        self.animation_movie.start()
-        self.cancel_button.show()
-        self.log_text.show()
-        self.log_label.show()
-
-    def hide_execution_indicators(self):
-        """
-        Hides the loading animation, cancel button, and log area.
-        """
-        self.animation_movie.stop()
-        self.animation_label.hide()
-        self.cancel_button.hide()
-        self.log_text.hide()
-        self.log_label.hide()
-
-    def reset_execution_state(self):
-        """
-        Resets the execution state by hiding indicators and re-enabling buttons.
-        """
-        self.set_buttons_enabled(True)
-        self.hide_execution_indicators()
-        self.log_text.hide()
-        self.log_label.hide()
+        self.log_text.append(f"<span style='color: white;'>{message}</span>")
 
     # ---------------------------------
     # Script Running Method
@@ -1606,22 +1999,24 @@ class MainApp(QWidget):
     def run_python_script(self, file_name):
         """
         Executes a Python script on a separate thread and displays its DataFrame output.
-        
+
         Args:
             file_name (str): The name of the script file to execute.
         """
-        def execute_script():
+
+        def execute_script(file_name):
             try:
                 # Show loading bar and blur effect
                 self.toggle_loading(True)
 
-                # Construct the full path to the script
-                script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_extraction")
-                script_path = os.path.join(script_dir, file_name)
+                # Construct the full path to the script using get_resource_path
+                script_path = self.get_resource_path(os.path.join("data_extraction", file_name))
 
                 # Check if the script exists
                 if not os.path.exists(script_path):
-                    self.log_text.append(f"<span style='color: red;'>Script not found: {file_name}</span>")
+                    self.log_signal.emit(
+                        "red", f"<span>Script not found: {file_name}</span><br>"
+                    )
                     return
 
                 # Execute the script
@@ -1629,35 +2024,42 @@ class MainApp(QWidget):
                     [sys.executable, script_path],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True  # Ensures the output is returned as a string
+                    text=True,  # Ensures the output is returned as a string
                 )
                 stdout, stderr = process.communicate()
 
                 if process.returncode == 0:
                     output = stdout.strip()
-                    print(f"Raw Output from {file_name}:\n{output}")
+                    self.log_signal.emit("white", f"Raw Output from {file_name}:\n{output}\n")
 
                     try:
                         # Attempt to parse the output as a CSV formatted DataFrame
                         df = pd.read_csv(StringIO(output))
                         self.display_dataframe(df)  # Display the DataFrame in the UI
                     except pd.errors.ParserError as pe:
-                        self.log_text.append(f"<span style='color: red;'>DataFrame Parsing error: {str(pe)}</span>")
+                        self.log_signal.emit(
+                            "red", f"<span>DataFrame Parsing error: {str(pe)}</span><br>"
+                        )
                     except Exception as e:
-                        self.log_text.append(f"<span style='color: red;'>Failed to parse DataFrame output: {str(e)}</span>")
+                        self.log_signal.emit(
+                            "red", f"<span>Failed to parse DataFrame output: {str(e)}</span><br>"
+                        )
                 else:
                     error_message = stderr.strip()
-                    print(f"Error Output from {file_name}:\n{error_message}")
-                    self.log_text.append(f"<span style='color: red;'>Error executing script: {error_message}</span>")
+                    self.log_signal.emit(
+                        "red", f"<span>Error executing script: {error_message}</span><br>"
+                    )
 
             except Exception as e:
-                self.log_text.append(f"<span style='color: red;'>An error occurred: {str(e)}</span>")
+                self.log_signal.emit(
+                    "red", f"<span>An error occurred: {str(e)}</span><br>"
+                )
             finally:
                 # Hide loading bar and blur effect
                 self.toggle_loading(False)
 
         # Start the script execution in a separate thread
-        threading.Thread(target=execute_script).start()
+        threading.Thread(target=execute_script, args=(file_name,), daemon=True).start()
 
     def toggle_loading(self, is_loading):
         """
@@ -1677,10 +2079,29 @@ class MainApp(QWidget):
             self.retrieving_data_label.hide()
             self.blur_effect.setEnabled(False)
 
+    def show_summary(self):
+        """
+        Displays a summary of script execution results.
+        """
+        success = [k for k, v in self.script_results.items() if v == "success"]
+        failed = [k for k, v in self.script_results.items() if v == "failed"]
 
-# =============================================================================
-# Main Entry Point
-# =============================================================================
+        summary = "<b>Execution Summary:</b><br>"
+        if success:
+            summary += f"<b>Successful Scripts ({len(success)}):</b><br>"
+            for s in success:
+                summary += f"- {s}<br>"
+        if failed:
+            summary += f"<b>Failed Scripts ({len(failed)}):</b><br>"
+            for s in failed:
+                summary += f"- {s}<br>"
+
+        QMessageBox.information(self, "Execution Summary", summary)
+
+    # =============================================================================
+    # Main Entry Point
+    # =============================================================================
+
 
 def main():
     """
@@ -1704,9 +2125,8 @@ def main():
         background-color: #dcdcdc;
     }
     QPushButton:checked {
-        background-color: #a0c4ff;
-        border: 2px solid #89a4ff;
-        color: black;
+        background-color: #207544;
+        color: white;
     }
     """
     app.setStyleSheet(button_style)
@@ -1715,7 +2135,6 @@ def main():
     window.show()
     sys.exit(app.exec())
 
+
 if __name__ == "__main__":
     main()
-
-

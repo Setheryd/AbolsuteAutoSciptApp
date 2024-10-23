@@ -1,4 +1,4 @@
-#patient_attrition.py
+# patient_attrition.py
 
 import pandas as pd
 import os
@@ -8,14 +8,26 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import MaxNLocator
 
-# Get the parent directory of the current script
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+def get_resource_path(relative_path):
+    """Get the absolute path to the resource, works for PyInstaller executable."""
+    try:
+        # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # If not running as an executable, use the current script directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
+# Get the parent directory using get_resource_path
+parent_dir = get_resource_path(os.path.join(os.pardir))
 
 # Add the data_extraction directory to the system path
 sys.path.append(os.path.join(parent_dir, "data_extraction"))
 
-from patient_data_extractor import PatientDataExtractor
+from data_extraction.patient_data_extractor import PatientDataExtractor
 
 
 class ChurnAttritionAnalyzer:
@@ -185,66 +197,72 @@ class ChurnAttritionAnalyzer:
         """
         return report_df.to_csv(index=False)
 
-    def generate_charts(self, report_df, output_dir="charts"):
-            """
-            Generate charts showing churn and attrition rates over time and save as an image file.
+    def generate_charts(self, report_df, output_dir="../charts"):
+        """
+        Generate charts showing churn and attrition rates over time and save as an image file.
 
-            Args:
-                report_df (pd.DataFrame): DataFrame containing monthly reports.
-                output_dir (str): Directory to save the chart image.
+        Args:
+            report_df (pd.DataFrame): DataFrame containing monthly reports.
+            output_dir (str): Directory to save the chart image.
 
-            Returns:
-                str: Absolute path to the saved chart image.
-            """
-            # Ensure the output directory exists
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
+        Returns:
+            str: Absolute path to the saved chart image.
+        """
+        # Ensure the output directory exists
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-            # Convert 'Report Month' to datetime for plotting
-            report_df["Report Month Date"] = pd.to_datetime(
-                report_df["Report Month"], format="%B %Y"
-            )
+        # Convert 'Report Month' to datetime for plotting
+        report_df["Report Month Date"] = pd.to_datetime(
+            report_df["Report Month"], format="%B %Y"
+        )
 
-            # Plot Churn and Attrition Rates
-            plt.figure(figsize=(14, 7))
-            plt.plot(
-                report_df["Report Month Date"],
-                report_df["Churn Rate (%)"],
-                marker="o",
-                label="Churn Rate (%)",
-            )
-            plt.plot(
-                report_df["Report Month Date"],
-                report_df["Attrition Rate (%)"],
-                marker="o",
-                label="Attrition Rate (%)",
-            )
+        # Plot Churn and Attrition Rates
+        plt.figure(figsize=(14, 7))
+        plt.plot(
+            report_df["Report Month Date"],
+            report_df["Churn Rate (%)"],
+            marker="o",
+            label="Churn Rate (%)",
+            color="#006400",  # Dark green for Churn Rate
+            linewidth=2
+        )
+        plt.plot(
+            report_df["Report Month Date"],
+            report_df["Attrition Rate (%)"],
+            marker="o",
+            label="Attrition Rate (%)",
+            color="#32CD32",  # Lighter green for Attrition Rate
+            linewidth=2
+        )
 
-            plt.xlabel("Month")
-            plt.ylabel("Rate (%)")
-            plt.title("Churn and Attrition Rates Over Time")
-            plt.legend()
+        plt.xlabel("Month")
+        plt.ylabel("Rate (%)")
+        plt.title("Churn and Attrition Rates Over Time")
+        plt.legend()
 
-            # Set major ticks to every 2 months
-            ax = plt.gca()
-            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))  # Every 2 months
-            ax.xaxis.set_major_formatter(
-                mdates.DateFormatter("%B %Y")
-            )  # e.g., January 2023
+        # Set major ticks to every 2 months
+        ax = plt.gca()
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))  # Every 2 months
+        ax.xaxis.set_major_formatter(
+            mdates.DateFormatter("%B %Y")
+        )  # e.g., January 2023
 
-            # Rotate date labels for better readability
-            plt.xticks(rotation=45)
+        # Rotate date labels for better readability
+        plt.xticks(rotation=45)
 
-            plt.tight_layout()
+        plt.tight_layout()
 
-            # Define absolute path for the chart image
-            chart_filename = os.path.abspath(os.path.join(output_dir, "churn_attrition_chart.png"))
+        # Define absolute path for the chart image
+        chart_filename = get_resource_path(
+            os.path.join(output_dir, "churn_attrition_chart.png")
+        )
 
-            # Save the figure
-            plt.savefig(chart_filename)
-            plt.close()  # Close the figure to free memory
+        # Save the figure
+        plt.savefig(chart_filename)
+        plt.close()  # Close the figure to free memory
 
-            return chart_filename
+        return chart_filename
 
     def run_analysis(self):
         """
@@ -260,12 +278,12 @@ class ChurnAttritionAnalyzer:
 
         # Instead of saving to CSV, get the CSV string
         csv_string = self.get_csv_string(report_df)
-  
+
         print(csv_string)
-        
+
         # Generate charts and get the chart filename
         chart_filename = self.generate_charts(report_df)
-        
+
         # Optionally, you can return the report and chart filename
         return report_df, chart_filename
 
