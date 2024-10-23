@@ -1950,11 +1950,16 @@ class MainApp(QWidget):
                     return
 
                 # Execute the script using the original Python interpreter, not the PyInstaller executable
+                if os.name == 'nt':
+                    # Windows-specific flag to suppress the console window
+                    CREATE_NO_WINDOW = 0x08000000
+
                 process = subprocess.Popen(
                     [sys.executable if not getattr(sys, 'frozen', False) else 'python', script_path],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
+                    creationflags=CREATE_NO_WINDOW if os.name == 'nt' else 0  # Add flag on Windows
                 )
                 stdout, stderr = process.communicate()
 
