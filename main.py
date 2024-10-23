@@ -48,6 +48,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
+import daily_tasks.birthday
 
 
 # =============================================================================
@@ -299,7 +300,7 @@ class MainApp(QWidget):
         screen = QGuiApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
         self.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height() - 20)
-        
+
     def get_resource_path(self, relative_path):
         """Get the absolute path to the resource, works for PyInstaller executable."""
         try:
@@ -308,7 +309,7 @@ class MainApp(QWidget):
         except AttributeError:
             # If not running as an executable, use the current script directory
             base_path = os.path.dirname(os.path.abspath(__file__))
-        
+
         return os.path.join(base_path, relative_path)
 
     def initialize_scripts_mapping(self):
@@ -317,9 +318,7 @@ class MainApp(QWidget):
         """
         self.scripts = {
             # Daily Scripts
-            "Employee Birthday Email": self.get_resource_path(
-                os.path.join("daily_tasks", "birthday.py")
-            ),
+            "Employee Birthday Email": daily_tasks.birthday.main,
             # Weekly Scripts
             "Caregiver ID Exp": self.get_resource_path(
                 os.path.join("weekly_tasks", "in_emp_id_exp.py")
@@ -1520,21 +1519,15 @@ class MainApp(QWidget):
             QMessageBox.critical(self, "Exception", f"An error occurred:\n{str(e)}")
             self.run_next_script()
 
-    def run_single_script(self, script_path, script_name):
+    def run_single_script(self, script_function, script_name):
         """
-        Executes a single script and handles its execution state.
-
+        Executes a single script function directly.
+        
         Args:
-            script_path (str): The path to the script to execute.
+            script_function (callable): The function to execute.
             script_name (str): The name of the script.
         """
         try:
-            if not os.path.exists(script_path):
-                QMessageBox.critical(
-                    self, "Error", f"Script not found at {script_path}"
-                )
-                return
-
             # Reset Status Icons
             self.script_buttons[script_name].set_status("pending")
             self.script_results = {script_name: "pending"}
@@ -1551,15 +1544,36 @@ class MainApp(QWidget):
             self.highlight_active_button(script_name)
             self.current_script_name = script_name
 
-            # Initialize QProcess
-            self.process = QProcess(self)
-            self.process.setProgram(sys.executable)
-            self.process.setArguments(["-u", script_path])
+            # Log the start of script execution
+            self.log_text.append(f"Starting script: {script_name}\n")
 
-            # Connect Signals
-            self.process.readyReadStandardOutput.connect(self.handle_stdout)
-            self.process.readyReadStandardError.connect(self.handle_stderr)
-            self.process.finished.connect(self.process_finished)
+            # Execute the script function
+            result = script_function()
+
+
+            # Handle the result
+            if isinstance(result, pd.DataFrame):
+                self.display_dataframe(result)
+                self.log_text.append(f"<span style='color: green;'>Script '{script_name}' executed successfully.</span>\n")
+                self.script_results[script_name] = "success"
+                self.script_buttons[script_name].set_status("success")
+            else:
+                # If the script returns something else, handle accordingly
+                self.log_text.append(f"<span style='color: green;'>Script '{script_name}' executed with result: {result}</span>\n")
+                self.script_results[script_name] = "success"
+                self.script_buttons[script_name].set_status("success")
+
+            # Reset button highlights
+            self.highlight_active_button(None)
+
+            # Hide execution indicators
+            self.hide_execution_indicators()
+
+            # Re-enable buttons
+            self.set_buttons_enabled(True)
+
+            # Show summary
+            self.show_summary()
 
             # Start Timeout Timer
             self.timer.start()
@@ -1568,12 +1582,22 @@ class MainApp(QWidget):
             self.process.start()
 
         except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Exception",
-                f"An error occurred while executing the script:\n{str(e)}",
-            )
-            self.reset_execution_state()
+            # Log the error
+            self.log_text.append(f"<span style='color: red;'>Error executing script '{script_name}': {str(e)}</span>\n")
+            self.script_results[script_name] = "failed"
+            self.script_buttons[script_name].set_status("failed")
+
+            # Reset button highlights
+            self.highlight_active_button(None)
+
+            # Hide execution indicators
+            self.hide_execution_indicators()
+
+            # Re-enable buttons
+            self.set_buttons_enabled(True)
+
+            # Show summary
+            self.show_summary()
 
     def handle_stdout(self):
         """

@@ -34,6 +34,18 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 
+def get_resource_path(relative_path):
+    """Get the absolute path to the resource, works for PyInstaller executable."""
+    try:
+        # PyInstaller creates a temporary folder and stores the path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # If not running as an executable, use the current script directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
 # Categorized Items
 ability_daily_items = sorted(
     [
@@ -277,7 +289,6 @@ def ability_setup_scripts_tab(self):
     self.tab_widget.addTab(self.scripts_tab, "Scripts")
 
 
-
 def ability_setup_graph_tab(self):
     """
     Sets up the Graph tab in Ability mode.
@@ -314,4 +325,3 @@ def ability_update_category_styles(self):
     self.daily_button.setChecked(self.expanded_categories["Daily"])
     self.weekly_button.setChecked(self.expanded_categories["Weekly"])
     self.monthly_button.setChecked(self.expanded_categories["Monthly"])
-
