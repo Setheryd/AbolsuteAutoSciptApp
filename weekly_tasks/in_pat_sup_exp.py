@@ -335,7 +335,6 @@ def send_email(employees_list, signature, username):
     logging.info("Email composed using 'mailto' and opened in default email client.")
     print("Email composed using 'mailto' and opened in default email client.")
 
-
 def extract_evaluation_expirations():
     """
     Main function to extract employees requiring evaluations and send an email report.
@@ -374,10 +373,15 @@ def extract_evaluation_expirations():
         excel.Visible = False
         print("Excel application initialized.")
 
-        # Open the Audit Workbook
+        # Open the Audit Workbook using positional arguments
         print(f"Opening workbook '{audit_filename}'...")
-        # Parameters: Filename, UpdateLinks, ReadOnly, Format, Password
-        wb_audit = excel.Workbooks.Open(Filename=audit_file, UpdateLinks=False, ReadOnly=True, Password="abs$1004$N")
+        wb_audit = excel.Workbooks.Open(
+            audit_file,    # Filename
+            False,         # UpdateLinks: False = don't update links
+            True,          # ReadOnly: True = open as read-only
+            None,          # Format: None = default
+            "abs$1004$N"    # Password
+        )
         print("Patient Audit Checklist workbook opened successfully.")
     except Exception as e:
         print(f"Failed to open '{audit_filename}': {e}")
@@ -409,10 +413,14 @@ def extract_evaluation_expirations():
         print(f"Employees requiring evaluations found: {total_employees}")
         # Construct the signature path dynamically
         print("Constructing signature path...")
-        signature_filename = "Absolute Signature (seth.riley@absolutecaregivers.com).htm"
-        sig_path = os.path.join(os.environ.get('APPDATA', ''), 'Microsoft', 'Signatures', signature_filename)
-        print(f"Signature path: {sig_path}")
-        signature = get_signature_by_path(sig_path)
+        email = get_default_outlook_email()
+        if email:
+            signature_filename = f"Absolute Signature ({email}).htm"
+            sig_path = os.path.join(os.environ.get('APPDATA', ''), 'Microsoft', 'Signatures', signature_filename)
+            print(f"Signature path: {sig_path}")
+            signature = get_signature_by_path(sig_path)
+        else:
+            signature = ""
 
         print("Sending email...")
         send_email(employees_list, signature, username)

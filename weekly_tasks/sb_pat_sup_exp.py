@@ -354,9 +354,15 @@ def extract_evaluation_expirations():
         excel.DisplayAlerts = False
         excel.Visible = False
 
-        # Open the Audit Workbook
+        # Open the Audit Workbook using positional arguments
         # Parameters: Filename, UpdateLinks, ReadOnly, Format, Password
-        wb_audit = excel.Workbooks.Open(Filename=audit_file, UpdateLinks=False, ReadOnly=True, Password="abs$1004$N")
+        wb_audit = excel.Workbooks.Open(
+            audit_file,    # Filename
+            False,         # UpdateLinks: False = don't update links
+            True,          # ReadOnly: True = open as read-only
+            None,          # Format: None = default
+            "abs$1004$N"    # Password
+        )
         print("Patient Audit Checklist workbook opened successfully.")
     except Exception as e:
         print(f"Failed to open '{audit_filename}': {e}")
@@ -382,11 +388,15 @@ def extract_evaluation_expirations():
     # Send email if there are employees requiring evaluations
     if employees_list:
         # Construct the signature path dynamically
-        signature_filename = "Absolute Signature (seth.riley@absolutecaregivers.com).htm"
-        sig_path = os.path.join(os.environ.get('APPDATA', ''), 'Microsoft', 'Signatures', signature_filename)
-        signature = get_signature_by_path(sig_path)
+        email = get_default_outlook_email()
+        if email:
+            signature_filename = f"Absolute Signature ({email}).htm"
+            sig_path = os.path.join(os.environ.get('APPDATA', ''), 'Microsoft', 'Signatures', signature_filename)
+            signature = get_signature_by_path(sig_path)
+        else:
+            signature = ""
 
-        send_email(employees_list, signature, username)
+        send_email(employees_list)
     else:
         print("No employees requiring evaluations found.")
 

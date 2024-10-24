@@ -492,7 +492,7 @@ def extract_expiring_employees():
     print(f"Found {demographics_filename} at: {demographics_file}")
 
     try:
-        # Replace Dispatch with DispatchEx to create a new Excel instance
+        # Replace Dispatch with Dispatch to create a new Excel instance
         print("Initializing Excel application...")
         excel = win32.DispatchEx("Excel.Application")
         excel.DisplayAlerts = False
