@@ -7,6 +7,8 @@ import tempfile
 import sys
 import logging
 from bs4 import BeautifulSoup
+from multiprocessing import Process
+import time
 
 # ====== Logging Configuration ======
 logging.basicConfig(
@@ -334,10 +336,10 @@ def create_birthday_image(employee, presentation):
         logging.error(f"Error creating birthday image for {employee['Last, First M']}: {e}")
         return None
 
-def send_birthday_email(employee, image_path, signature_html, signature_images):
+def compose_email(employee, image_path, signature_html, signature_images):
     """
     Composes and sends an email to the employee with the birthday image and signature embedded.
-    
+
     Parameters:
         employee (dict): Employee information.
         image_path (str): Path to the birthday image to embed in the email.
@@ -392,6 +394,40 @@ def send_birthday_email(employee, image_path, signature_html, signature_images):
         logging.info(f"Email composed for {employee['Last, First M']} at {employee['e-mail address']}")
     except Exception as e:
         logging.error(f"Error sending email to {employee['Last, First M']}: {e}")
+        raise e  # Re-raise the exception to handle in the calling function
+
+def send_birthday_email(employee, image_path, signature_html, signature_images):
+    """
+    Attempts to send an email via COM automation with a timeout.
+    If it fails or times out, logs an error message.
+
+    Parameters:
+        employee (dict): Employee information.
+        image_path (str): Path to the birthday image to embed in the email.
+        signature_html (str): HTML content of the user's signature.
+        signature_images (list): List of tuples containing signature image paths and their CIDs.
+    """
+    def compose_email_process():
+        compose_email(employee, image_path, signature_html, signature_images)
+
+    try:
+        process = Process(target=compose_email_process)
+        process.start()
+        process.join(timeout=5)  # Wait up to 5 seconds
+
+        if process.is_alive():
+            logging.error(f"Composing email for {employee['Last, First M']} took too long, terminating process.")
+            process.terminate()
+            process.join()
+            # Since attachments are involved, 'mailto' is not suitable as a fallback.
+            # Log the error and proceed to the next employee.
+            print(f"Failed to send email to {employee['Last, First M']} due to timeout.")
+        else:
+            logging.info(f"Email composed successfully for {employee['Last, First M']}")
+    except Exception as e:
+        logging.error(f"Exception during composing email for {employee['Last, First M']}: {e}")
+        print(f"Failed to send email to {employee['Last, First M']} due to an error.")
+
 
 def main():
     """

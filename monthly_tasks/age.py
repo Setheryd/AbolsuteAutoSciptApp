@@ -2,6 +2,11 @@ import win32com.client as win32
 import pandas as pd
 import os
 import logging
+from multiprocessing import Process
+import time
+import urllib.parse
+import webbrowser
+from bs4 import BeautifulSoup
 
 # Set up logging to a file
 logging.basicConfig(
@@ -12,6 +17,7 @@ logging.basicConfig(
 
 def find_file(base_path, filename, max_depth=5):
     logging.debug(f"Searching for {filename} in {base_path} up to depth {max_depth}")
+    print(f"Searching for {filename} in {base_path} up to depth {max_depth}")
     def scan_directory(path, current_depth):
         if current_depth > max_depth:
             return None
@@ -20,6 +26,7 @@ def find_file(base_path, filename, max_depth=5):
                 for entry in it:
                     if entry.is_file() and entry.name.lower() == filename.lower():
                         logging.debug(f"Found file: {entry.path}")
+                        print(f"Found file: {entry.path}")
                         return entry.path
                     elif entry.is_dir():
                         found_file = scan_directory(entry.path, current_depth + 1)
@@ -27,6 +34,7 @@ def find_file(base_path, filename, max_depth=5):
                             return found_file
         except PermissionError as e:
             logging.warning(f"PermissionError: {e}")
+            print(f"PermissionError: {e}")
             return None
     return scan_directory(base_path, 0)
 
@@ -35,8 +43,10 @@ def extract_eligible_patients():
         username = os.getlogin()
         base_path = f"C:\\Users\\{username}\\OneDrive - Ability Home Health, LLC\\"
         logging.debug(f"Base path: {base_path}")
+        print(f"Base path: {base_path}")
         if not os.path.exists(base_path):
             logging.error(f"Base path does not exist: {base_path}")
+            print(f"Base path does not exist: {base_path}")
             return None
 
         files_info = {
@@ -57,8 +67,10 @@ def extract_eligible_patients():
             excel.AskToUpdateLinks = False
             excel.AlertBeforeOverwriting = False
             logging.debug("Excel application started successfully.")
+            print("Excel application started successfully.")
         except Exception as e:
             logging.error(f"Failed to create Excel application: {e}")
+            print(f"Failed to create Excel application: {e}")
             return None
 
         try:
@@ -68,13 +80,16 @@ def extract_eligible_patients():
                 file_path = find_file(base_path, filename)
                 if file_path is None:
                     logging.warning(f"File not found: {filename}")
+                    print(f"File not found: {filename}")
                     continue
 
                 if required_subdir not in os.path.normpath(file_path):
                     logging.warning(f"File {filename} is not in the required subdirectory: {required_subdir}")
+                    print(f"File {filename} is not in the required subdirectory: {required_subdir}")
                     continue
 
                 logging.debug(f"Opening file: {file_path}")
+                print(f"Opening file: {file_path}")
 
                 try:
                     wb = excel.Workbooks.Open(
@@ -97,11 +112,13 @@ def extract_eligible_patients():
                     workbooks[filename] = wb
                 except Exception as e:
                     logging.error(f"Error opening file {file_path}: {e}")
+                    print(f"Error opening file {file_path}: {e}")
                     continue
 
             # Now process each workbook
             for filename, wb in workbooks.items():
                 logging.debug(f"Processing workbook: {filename}")
+                print(f"Processing workbook: {filename}")
                 try:
                     ws = wb.Sheets("Patient Information")
                     used_range = ws.UsedRange
@@ -109,6 +126,7 @@ def extract_eligible_patients():
 
                     if not data:
                         logging.warning(f"No data found in 'Patient Information' sheet in '{filename}'")
+                        print(f"No data found in 'Patient Information' sheet in '{filename}'")
                         continue
 
                     # Get the header row and locate the necessary columns
@@ -118,6 +136,7 @@ def extract_eligible_patients():
                         discharge_date_index = header.index("Discharge Date")  # Index for "Discharge Date" column
                     except ValueError as e:
                         logging.error(f"Required column not found in '{filename}': {e}")
+                        print(f"Required column not found in '{filename}': {e}")
                         continue
 
                     data_rows = data[1:]  # Skip header row
@@ -134,10 +153,13 @@ def extract_eligible_patients():
                                 "Age": age,
                                 "File": filename  # Add the filename to the data
                             })
+                            print(f"Found eligible patient: {patient_name}, Age: {age}, File: {filename}")
 
                     logging.debug(f"Finished processing workbook: {filename}")
+                    print(f"Finished processing workbook: {filename}")
                 except Exception as e:
                     logging.error(f"Error processing workbook {filename}: {e}")
+                    print(f"Error processing workbook {filename}: {e}")
                     continue
 
         finally:
@@ -147,27 +169,32 @@ def extract_eligible_patients():
             excel.Quit()
             del excel
             logging.debug("Excel application closed.")
+            print("Excel application closed.")
 
         if patients_within_3_months_of_60:
             df = pd.DataFrame(patients_within_3_months_of_60)
             logging.info("DataFrame created successfully with patients within 3 months of turning 60.")
+            print("DataFrame created successfully with patients within 3 months of turning 60.")
             return df
         else:
             logging.info("No patients within 3 months of turning 60 found.")
+            print("No patients within 3 months of turning 60 found.")
             return None
     except Exception as e:
         logging.error(f"Error in extract_eligible_patients: {e}")
+        print(f"Error in extract_eligible_patients: {e}")
         return None
-
 
 def main():
     df = extract_eligible_patients()
     if df is not None:
         logging.info("DataFrame generated successfully.")
-        print(df)  # For debugging purposes
+        print("DataFrame generated successfully.")
+        print(df)
         compose_and_send_email(df)
     else:
         logging.info("No data to display.")
+        print("No data to display.")
 
 def get_signature_by_path(sig_path):
     """
@@ -176,9 +203,12 @@ def get_signature_by_path(sig_path):
     try:
         with open(sig_path, 'r', encoding='utf-8') as file:
             signature = file.read()
+        logging.debug(f"Signature retrieved from {sig_path}")
+        print(f"Signature retrieved from {sig_path}")
         return signature
     except Exception as e:
         logging.error(f"Unable to retrieve signature from {sig_path}: {e}")
+        print(f"Unable to retrieve signature from {sig_path}: {e}")
         return None
 
 def get_default_outlook_email():
@@ -191,12 +221,16 @@ def get_default_outlook_email():
         accounts = namespace.Accounts
         if accounts.Count > 0:
             default_account = accounts.Item(1)
+            logging.debug(f"Default Outlook email retrieved: {default_account.SmtpAddress}")
+            print(f"Default Outlook email retrieved: {default_account.SmtpAddress}")
             return default_account.SmtpAddress
         else:
             logging.error("No Outlook accounts found.")
+            print("No Outlook accounts found.")
             return None
     except Exception as e:
         logging.error(f"Unable to retrieve default Outlook email: {e}")
+        print(f"Unable to retrieve default Outlook email: {e}")
         return None
 
 def get_default_signature():
@@ -206,17 +240,20 @@ def get_default_signature():
     email = get_default_outlook_email()
     if not email:
         logging.error("Default Outlook email not found.")
+        print("Default Outlook email not found.")
         return None
 
     # Define the signature directory
     appdata = os.environ.get('APPDATA')
     if not appdata:
         logging.error("APPDATA environment variable not found.")
+        print("APPDATA environment variable not found.")
         return None
 
     sig_dir = os.path.join(appdata, 'Microsoft', 'Signatures')
     if not os.path.isdir(sig_dir):
         logging.error(f"Signature directory does not exist: {sig_dir}")
+        print(f"Signature directory does not exist: {sig_dir}")
         return None
 
     # Iterate through signature files to find a match
@@ -229,15 +266,37 @@ def get_default_signature():
                 signature = get_signature_by_path(sig_path)
                 if signature:
                     logging.info(f"Signature found: {sig_path}")
+                    print(f"Signature found: {sig_path}")
                     return signature
 
     logging.error(f"No signature file found containing email: {email}")
+    print(f"No signature file found containing email: {email}")
     return None
 
+def compose_email_classic(email_body, to_addresses, cc_addresses, subject):
+    """
+    Composes and displays an email via COM automation for classic Outlook.
+    """
+    try:
+        outlook = win32.Dispatch("Outlook.Application")
+        mail = outlook.CreateItem(0)
+        mail.Subject = subject
+        mail.BodyFormat = 2  # HTML format
+        mail.HTMLBody = email_body
+        mail.To = to_addresses
+        mail.CC = cc_addresses
+        mail.Display()  # Display email for review
+        logging.info("Email created successfully via COM automation.")
+        print("Email created successfully via COM automation.")
+    except Exception as e:
+        logging.error(f"Failed to create or send email via COM automation: {e}")
+        print(f"Failed to create or send email via COM automation: {e}")
+        raise
 
 def compose_and_send_email(df):
     if df.empty:
         logging.info("No patients within 3 months of turning 60 to include in the email.")
+        print("No patients within 3 months of turning 60 to include in the email.")
         return
 
     # Filter out rows where "Patient Name" is not a string and build the list with bullet points
@@ -250,6 +309,7 @@ def compose_and_send_email(df):
 
     if not patient_list:
         logging.info("No valid patient names found.")
+        print("No valid patient names found.")
         return
 
     email_body = f"""
@@ -266,22 +326,81 @@ def compose_and_send_email(df):
     signature = get_default_signature()
     if signature:
         email_body += f"<div>{signature}</div>"
+        logging.info(f"Signature found and added to email body.")
+        print("Signature found and added to email body.")
+    else:
+        logging.info("No signature found, proceeding without signature.")
+        print("No signature found, proceeding without signature.")
 
+    to_addresses = "ulyana.stokolosa@absolutecaregivers.com; victoria.shmoel@absolutecaregivers.com"
+    cc_addresses = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
+    subject = "List of Patients Within 3 Months of Turning 60"
+
+    # Run compose_email_classic in a separate process with a timeout
     try:
-        outlook = win32.Dispatch("Outlook.Application")
-        mail = outlook.CreateItem(0)
-        mail.Subject = "List of Patients Within 3 Months of Turning 60"
-        mail.BodyFormat = 2  # HTML format
-        mail.HTMLBody = email_body
+        process = Process(target=compose_email_classic, args=(email_body, to_addresses, cc_addresses, subject))
+        process.start()
+        process.join(timeout=5)  # Wait up to 5 seconds
 
-        # Send or display the email
-        mail.To = "ulyana.stokolosa@absolutecaregivers.com; victoria.shmoel@absolutecaregivers.com"  # Update with actual recipient
-        mail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"  # Update with actual recipient
-        mail.Display()  # Display email for review, change to mail.Send() to send automatically
-        logging.info("Email created successfully.")
+        if process.is_alive():
+            logging.warning("Composing email via COM automation took too long, terminating process.")
+            print("Composing email via COM automation took too long, terminating process.")
+            process.terminate()
+            process.join()
+            raise Exception("Timeout composing email via COM automation.")
+        else:
+            logging.info("Email composed via COM automation successfully.")
+            print("Email composed via COM automation successfully.")
+            return  # Exit the function, as the email has been composed
     except Exception as e:
-        logging.error(f"Failed to create or send email: {e}")
+        logging.error(f"Exception during composing email via COM automation: {e}")
+        print(f"Exception during composing email via COM automation: {e}")
+        # Proceed to fallback method
 
+    # Fallback method using 'mailto' link
+    logging.info("Using fallback method to compose email.")
+    print("Using fallback method to compose email.")
+
+    # Prepare email components
+    body_text = (
+        "Good Morning Team,\n\n"
+        "This is a list of Patients from all of our Patient Records Files that are about to turn 60 in the next 3 months. "
+        "This email is automated, and its intended purpose is to help track MCE enrollment for the patients about to turn 60. Thank you.\n\n"
+    )
+
+    # Convert HTML bullet points to plain text
+    patient_list_text = ""
+    for index, row in df.iterrows():
+        patient_name = row["Patient Name"]
+        if isinstance(patient_name, str):
+            patient_list_text += f"- {patient_name} (from {row['File']})\n"
+
+    body_text += patient_list_text
+
+    # Add signature if available
+    signature = get_default_signature()
+    if signature:
+        # Remove HTML tags from signature
+        soup = BeautifulSoup(signature, 'html.parser')
+        signature_text = soup.get_text()
+        body_text += f"\n\n{signature_text}"
+    else:
+        body_text += "\n\nBest regards,\n[Your Name]"
+
+    # Prepare email addresses
+    to_addresses_plain = to_addresses.replace(';', ',')
+    cc_addresses_plain = cc_addresses.replace(';', ',')
+
+    # Create the mailto link
+    mailto_link = f"mailto:{urllib.parse.quote(to_addresses_plain)}"
+    mailto_link += f"?cc={urllib.parse.quote(cc_addresses_plain)}"
+    mailto_link += f"&subject={urllib.parse.quote(subject)}"
+    mailto_link += f"&body={urllib.parse.quote(body_text)}"
+
+    # Open the mailto link
+    webbrowser.open(mailto_link)
+    logging.info("Email composed using 'mailto' and opened in default email client.")
+    print("Email composed using 'mailto' and opened in default email client.")
 
 if __name__ == "__main__":
     main()
