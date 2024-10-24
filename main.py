@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (  # type: ignore
     QGraphicsBlurEffect,
 )
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer, QPropertyAnimation  # type: ignore
-from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
+from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication, QPalette  # type: ignore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -2025,11 +2025,40 @@ class MainApp(QWidget):
 # =============================================================================
 
 
+def apply_dark_mode(app):
+    # Create a dark palette
+    dark_palette = QPalette()
+
+    # Set dark background
+    dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.WindowText, Qt.white)
+
+    # Set base color
+    dark_palette.setColor(QPalette.Base, QColor(35, 35, 35))
+    dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+
+    # Set text colors
+    dark_palette.setColor(QPalette.Text, Qt.white)
+    dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ButtonText, Qt.white)
+
+    # Set link colors
+    dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+
+    # Set highlight colors
+    dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+
+    app.setPalette(dark_palette)
+
+
 def main():
     """
     The main entry point for the application.
     """
     app = QApplication(sys.argv)
+    
+    apply_dark_mode(app)
 
     # Apply Global Button Style
     button_style = """
