@@ -5,7 +5,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import win32com.client as win32  # type: ignore
 import logging
-
+from multiprocessing import Process
+import urllib.parse
+import webbrowser
+from bs4 import BeautifulSoup  # For parsing HTML signatures
 print("Starting script execution.")
 
 def find_specific_file(base_path, filename, required_subpath, max_depth=5):
@@ -303,18 +306,15 @@ def get_default_signature():
     logging.error(f"No signature file found containing email: {email}")
     return None
 
-def send_email(expiring_employees_str):
+def compose_email_classic(expiring_employees_str):
     """
-    Compose and send an email via Outlook with the list of expiring employees.
-
-    Args:
-        expiring_employees_str (str): The formatted string of expiring employees.
+    Composes and displays an email via COM automation for classic Outlook.
     """
-    print("send_email called.")
+    print("compose_email_classic called.")
     try:
-        # Initialize Outlook application object using DispatchEx for better performance
+        # Initialize Outlook application object
         print("Initializing Outlook application...")
-        outlookApp = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
+        outlookApp = win32.Dispatch("Outlook.Application")
         mail = outlookApp.CreateItem(0)  # 0: olMailItem
 
         # Define recipients
@@ -369,21 +369,87 @@ def send_email(expiring_employees_str):
         print("Email composed and displayed successfully.")
 
     except Exception as e:
-        logging.error(f"Failed to compose or display email: {e}")
-        print(f"Failed to compose email: {e}")
+        logging.error(f"Failed to compose or display email via COM automation: {e}")
+        raise
 
-    finally:
-        # Release COM objects to free up resources
-        try:
-            if 'mail' in locals() and mail:
-                del mail
-            if 'outlookApp' in locals() and outlookApp:
-                del outlookApp
-            print("COM objects released.")
-        except Exception as cleanup_error:
-            logging.error(f"Error during cleanup: {cleanup_error}")
-            print(f"Error during cleanup: {cleanup_error}")
+def send_email(expiring_employees_str):
+    """
+    Composes and sends an email with a 5-second timeout for COM automation.
+    Falls back to using a mailto link if the timeout is exceeded.
+    """
+    print("send_email called.")
+    # Try composing email via COM automation with a timeout
+    try:
+        process = Process(target=compose_email_classic, args=(expiring_employees_str,))
+        process.start()
+        process.join(timeout=5)  # Wait up to 5 seconds
 
+        if process.is_alive():
+            logging.warning("Composing email via COM automation took too long, terminating process.")
+            process.terminate()
+            process.join()
+            raise Exception("Timeout composing email via COM automation.")
+        else:
+            logging.info("Email composed via COM automation successfully.")
+            return  # Exit the function, as the email has been composed successfully
+    except Exception as e:
+        logging.error(f"Exception during composing email via COM automation: {e}")
+        # Proceed to fallback method
+
+    # Fallback method using 'mailto' link
+    logging.info("Using fallback method to compose email.")
+    print("Using fallback method to compose email.")
+
+    # Prepare email components
+    to_addresses = (
+        "kaitlyn.moss@absolutecaregivers.com; "
+        "raegan.lopez@absolutecaregivers.com; "
+        "ulyana.stokolosa@absolutecaregivers.com"
+    )
+    cc_addresses = (
+        "alexander.nazarov@absolutecaregivers.com; "
+        "luke.kitchel@absolutecaregivers.com; "
+    )
+    subject = "Weekly Update: Expired or Expiring Drivers Licenses"
+
+    # Convert HTML content to plain text
+    email_body = (
+        "Hi Kaitlyn,\n\n"
+        "I hope this message finds you well.\n\n"
+        "This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. "
+        "Please contact them. Once resolved, update the employee audit checklist with their new expirations.\n\n"
+        f"{expiring_employees_str}\n\n"
+        "Best regards,\n"
+    )
+
+    # Append the signature if available
+    signature = get_default_signature()
+    if signature:
+        # Remove HTML tags from signature
+        soup = BeautifulSoup(signature, 'html.parser')
+        signature_text = soup.get_text()
+        email_body += signature_text
+        print("Signature appended to email body.")
+    else:
+        # Fallback signature
+        email_body += "Your Name\nAbsolute Caregivers"
+        print("Default fallback signature used.")
+
+    # Prepare email addresses
+    to_addresses_plain = to_addresses.replace(';', ',')
+    cc_addresses_plain = cc_addresses.replace(';', ',')
+
+    # Create the mailto link
+    mailto_link = f"mailto:{urllib.parse.quote(to_addresses_plain)}"
+    mailto_link += f"?cc={urllib.parse.quote(cc_addresses_plain)}"
+    mailto_link += f"&subject={urllib.parse.quote(subject)}"
+    mailto_link += f"&body={urllib.parse.quote(email_body)}"
+
+    # Open the mailto link
+    webbrowser.open(mailto_link)
+    logging.info("Email composed using 'mailto' and opened in default email client.")
+    print("Email composed using 'mailto' and opened in default email client.")
+    
 def extract_expiring_employees():
     """
     Main function to extract expiring employees and send an email report.
