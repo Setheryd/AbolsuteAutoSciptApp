@@ -658,12 +658,12 @@ class MainApp(QWidget):
 
         # Log Area
         self.log_label = QLabel("Script Output:")
-        self.log_label.hide()  # Hide initially
+        #self.log_label.hide()  # Hide initially
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
         self.log_text.setFixedWidth(400)
         self.log_text.setFixedHeight(400)
-        self.log_text.hide()  # Hide initially
+        #self.log_text.hide()  # Hide initially
         self.log_text.setStyleSheet(
             """
             QTextEdit {
@@ -1735,8 +1735,8 @@ class MainApp(QWidget):
         """
         self.set_buttons_enabled(True)
         self.hide_execution_indicators()
-        self.log_text.hide()
-        self.log_label.hide()
+        #self.log_text.hide()
+        #self.log_label.hide()
 
     def set_buttons_enabled(self, enabled):
         """
@@ -1914,8 +1914,8 @@ class MainApp(QWidget):
         self.animation_movie.stop()
         self.animation_label.hide()
         self.cancel_button.hide()
-        self.log_text.hide()
-        self.log_label.hide()
+        #self.log_text.hide()
+        #self.log_label.hide()
 
     def reset_execution_state(self):
         """
@@ -1923,8 +1923,8 @@ class MainApp(QWidget):
         """
         self.set_buttons_enabled(True)
         self.hide_execution_indicators()
-        self.log_text.hide()
-        self.log_label.hide()
+        #self.log_text.hide()
+        #self.log_label.hide()
 
     # ---------------------------------
     # Script Running Method
