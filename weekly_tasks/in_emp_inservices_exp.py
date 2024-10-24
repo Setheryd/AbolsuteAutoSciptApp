@@ -2,7 +2,13 @@
 
 import win32com.client as win32  # type: ignore
 import os
+import urllib.parse
+import webbrowser
+import traceback
 from datetime import datetime, timedelta
+from multiprocessing import Process
+import time
+
 
 print("Starting script execution.")
 
@@ -119,16 +125,23 @@ def get_signature_by_path(signature_path):
         print(f"Failed to get Outlook signature: {e}")
     return ""
 
-def send_email(employees_str):
+def compose_email_classic(employees_str):
     """
-    Compose and send an email via Outlook with the list of employees.
-
-    Args:
-        employees_str (str): The formatted string of employees.
+    Composes an email via COM automation for classic Outlook.
     """
-    print("Preparing to send email...")
     try:
-        outlookApp = win32.DispatchEx('Outlook.Application')  # Use DispatchEx
+        outlookApp = win32.Dispatch('Outlook.Application')
+        version = outlookApp.Version
+        print(f"Outlook version detected: {version}")
+        is_classic = True  # Assume classic Outlook if COM dispatch works
+    except Exception as com_exception:
+        print(f"COM automation failed: {com_exception}")
+        traceback.print_exc()
+        outlookApp = None
+        is_classic = False
+
+    if outlookApp and is_classic:
+        # Use COM automation to compose the email for classic Outlook
         outlookMail = outlookApp.CreateItem(0)
         outlookMail.To = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
         outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
@@ -174,10 +187,73 @@ def send_email(employees_str):
         outlookMail.HTMLBody = email_body
         print("Email body set.")
 
-        outlookMail.Display()  # Change to .Send() to send automatically without displaying
+        outlookMail.Display()  # Display the email instead of sending
         print("Email composed successfully and displayed for review.")
+    else:
+        # Raise an exception to indicate failure
+        raise Exception("Failed to compose email via COM automation.")
+
+def send_email(employees_str):
+    """
+    Compose and display an email via Outlook with the list of employees.
+    This function attempts to support both the classic and new versions of Outlook.
+    If composing via COM automation takes longer than 5 seconds or fails,
+    it falls back to using 'mailto'.
+
+    Args:
+        employees_str (str): The formatted string of employees.
+    """
+    print("Preparing to send email...")
+
+    # Run compose_email_classic in a separate process
+    try:
+        process = Process(target=compose_email_classic, args=(employees_str,))
+        process.start()
+        process.join(timeout=5)  # Wait up to 5 seconds
+
+        if process.is_alive():
+            print("Composing email via COM automation took too long, terminating process.")
+            process.terminate()
+            process.join()
+            raise Exception("Timeout composing email via COM automation.")
+        else:
+            print("Email composed via COM automation successfully.")
+            return  # Exit the function, since email is composed
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Exception during composing email via COM automation: {e}")
+        # Proceed to fallback method
+
+    # Fallback method for new Outlook or if COM automation fails
+    print("Using fallback method to compose email.")
+
+    # Prepare email components
+    to_addresses = "kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
+    cc_addresses = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
+    subject = "In-Services Employee In-Services Expiration Reminder"
+
+    # Build the body text
+    body = (
+        "Dear Team,\n\n"
+        "I hope this email finds you well. This is an automated reminder regarding the Indianapolis Employee Audit file.\n\n"
+        "The following Indianapolis employees require In-Services as indicated in the audit file. "
+        "Please follow up with them and update the Indy Employee Audit file accordingly. Thank you for your hard work!\n\n"
+    )
+    body += employees_str
+    body += "\n\nBest regards,\n"
+    body += f"{os.getlogin()}\nAbsolute Caregivers"
+
+    # Create the mailto link
+    mailto_link = f"mailto:{urllib.parse.quote(to_addresses)}"
+    mailto_link += f"?cc={urllib.parse.quote(cc_addresses)}"
+    mailto_link += f"&subject={urllib.parse.quote(subject)}"
+    mailto_link += f"&body={urllib.parse.quote(body)}"
+
+    print(f"Mailto link: {mailto_link}")
+
+    # Open the mailto link
+    webbrowser.open(mailto_link)
+    print("Email composed using 'mailto' and opened in default email client.")
+
 
 def extract_evaluation_expirations():
     """
@@ -257,7 +333,10 @@ def run_task():
         print(f"Error occurred during task execution: {e}")
         raise e
 
-if __name__ == "__main__":
+def main():
     print("Script execution started.")
     extract_evaluation_expirations()
     print("Script execution finished.")
+
+if __name__ == "__main__":
+    main()

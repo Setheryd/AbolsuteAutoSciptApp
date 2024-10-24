@@ -230,5 +230,8 @@ def run_task():
     except Exception as e:
         raise e
 
-if __name__ == "__main__":
+def main():
     extract_evaluation_expirations()
+
+if __name__ == "__main__":
+    main()

@@ -252,5 +252,8 @@ def run_task():
         print(f"An error occurred during task execution: {e}")
         sys.exit(1)
 
-if __name__ == "__main__":
+def main():
     run_task()
+
+if __name__ == "__main__":
+    main()

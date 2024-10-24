@@ -228,8 +228,7 @@ class BillingFilesDataExtractor:
             logging.error(f"Error in process_billing_files: {e}")
             print(f"Error: {e}")
 
-# Run the extraction process
-if __name__ == "__main__":
+def main():
     try:
         extractor = BillingFilesDataExtractor()
         df = extractor.process_billing_files()
@@ -242,3 +241,6 @@ if __name__ == "__main__":
         print(fnf_error)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
+if __name__ == "__main__":
+    main()

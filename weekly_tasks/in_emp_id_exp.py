@@ -498,7 +498,7 @@ def run_task():
         print(f"Error running task: {e}")
         raise e
 
-if __name__ == "__main__":
+def main():
     # Configure logging
     print("Script started.")
     logging.basicConfig(
@@ -510,3 +510,6 @@ if __name__ == "__main__":
     print("Logging configured.")
     extract_expiring_employees()
     print("Script finished.")
+
+if __name__ == "__main__":
+    main()
