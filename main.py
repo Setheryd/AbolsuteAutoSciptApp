@@ -8,17 +8,14 @@
 import os
 import sys
 import subprocess
-from datetime import datetime, timedelta
 from io import StringIO
 import threading
 
 
 # Third-Party Imports
-import win32com.client as win32  # type: ignore
 import pandas as pd
-# import mplcursors  # type: ignore
-import matplotlib.pyplot as plt
-from PySide6.QtWidgets import (  # type: ignore
+# import mplcursors  
+from PySide6.QtWidgets import (  
     QApplication,
     QWidget,
     QPushButton,
@@ -42,8 +39,8 @@ from PySide6.QtWidgets import (  # type: ignore
     QProgressBar,
     QGraphicsBlurEffect,
 )
-from PySide6.QtCore import Qt, QProcess, Slot, QTimer, QPropertyAnimation  # type: ignore
-from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  # type: ignore
+from PySide6.QtCore import Qt, QProcess, Slot, QTimer
+from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
