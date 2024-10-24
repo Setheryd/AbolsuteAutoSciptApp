@@ -10,13 +10,6 @@ from bs4 import BeautifulSoup
 from multiprocessing import Process
 import time
 
-# ====== Logging Configuration ======
-logging.basicConfig(
-    filename='birthday_notification.log',
-    level=logging.INFO,
-    format='%(asctime)s:%(levelname)s:%(message)s'
-)
-# ====================================
 
 def get_current_username():
     """
@@ -89,13 +82,28 @@ def read_password_protected_excel(excel_path, password, sheet_name):
         excel_app.Visible = False
         excel_app.DisplayAlerts = False
 
-        # Open the workbook with password
-        wb = excel_app.Workbooks.Open(Filename=excel_path, Password=password)
+        # Open the workbook with password using positional arguments
+        # Parameters based on VBA's Workbooks.Open method:
+        # Filename, UpdateLinks, ReadOnly, Format, Password
+        wb = excel_app.Workbooks.Open(
+            excel_path,      # Filename
+            False,           # UpdateLinks: 0 = don't update
+            False,           # ReadOnly: False = open as read/write
+            None,            # Format: Not specifying
+            password         # Password
+        )
 
         # Save it to a temporary file without password
         temp_dir = tempfile.gettempdir()
         temp_file = os.path.join(temp_dir, f"temp_{os.path.basename(excel_path)}")
-        wb.SaveAs(Filename=temp_file, FileFormat=wb.FileFormat, Password="", WriteResPassword="", ReadOnlyRecommended=False, CreateBackup=False)
+        wb.SaveAs(
+            Filename=temp_file,
+            FileFormat=wb.FileFormat,
+            Password="",                # Remove password
+            WriteResPassword="",        # Remove write-reservation password
+            ReadOnlyRecommended=False,
+            CreateBackup=False
+        )
 
         wb.Close(False)
         excel_app.Quit()
@@ -435,7 +443,7 @@ def main():
     """
     # ====== Configuration ======
     # Set the password for the Excel file here
-    EXCEL_PASSWORD = "abs$1004$N"  # <-- Replace with your actual password
+    EXCEL_PASSWORD = "abs$1004$N"  
     # ============================
 
     username = get_current_username()
@@ -452,11 +460,6 @@ def main():
     logging.info(f"Employee Demographics file found at: {demographics_path}")
     print(f"Employee Demographics file found at: {demographics_path}")
 
-    # Ensure that the password is provided
-    if not EXCEL_PASSWORD or EXCEL_PASSWORD == "your_excel_password_here":
-        logging.error("Please set the Excel file password in the script before running.")
-        print("Please set the Excel file password in the script before running.")
-        return
 
     # ====== Determine Relevant Dates ======
     today = datetime.datetime.today()
