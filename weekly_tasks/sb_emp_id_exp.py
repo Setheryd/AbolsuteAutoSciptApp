@@ -6,6 +6,10 @@ import sys
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+from multiprocessing import Process
+import urllib.parse
+import webbrowser
+from bs4 import BeautifulSoup  # For parsing HTML signatures
 
 
 # Configure logging
@@ -254,65 +258,197 @@ def get_signature_by_path(signature_path):
     return ""
 
 
-def send_email(expiring_employees_str):
+def get_default_outlook_email():
     """
-    Compose and send an email via Outlook with the list of expiring employees.
+    Retrieves the default Outlook email address of the current user.
 
-    Args:
-        expiring_employees_str (str): The formatted string of expiring employees.
+    Returns:
+        str: The default email address if available, otherwise None.
     """
+    print("get_default_outlook_email called.")
     try:
-        # Initialize Outlook application object using DispatchEx
-        outlookApp = win32.DispatchEx('Outlook.Application')  # Changed from Dispatch to DispatchEx
-        mail = outlookApp.CreateItem(0)  # 0: olMailItem
+        outlook = win32.Dispatch("Outlook.Application")
+        namespace = outlook.GetNamespace("MAPI")
+        accounts = namespace.Accounts
+        if accounts.Count > 0:
+            # Outlook accounts are 1-indexed
+            default_account = accounts.Item(1)
+            email = default_account.SmtpAddress
+            print(f"Default Outlook email: {email}")
+            return email
+        else:
+            logging.error("No Outlook accounts found.")
+            return None
+    except Exception as e:
+        logging.error(f"Unable to retrieve default Outlook email: {e}")
+        return None
 
+
+def get_default_signature():
+    """
+    Retrieves the user's default email signature based on their default Outlook account.
+
+    Returns:
+        str: The signature HTML content if available, otherwise None.
+    """
+    print("get_default_signature called.")
+    email = get_default_outlook_email()
+    if not email:
+        logging.error("Default Outlook email not found.")
+        return None
+
+    # Define the signature directory
+    appdata = os.environ.get('APPDATA')
+    if not appdata:
+        logging.error("APPDATA environment variable not found.")
+        return None
+
+    sig_dir = os.path.join(appdata, 'Microsoft', 'Signatures')
+    if not os.path.isdir(sig_dir):
+        logging.error(f"Signature directory does not exist: {sig_dir}")
+        return None
+
+    # Iterate through signature files to find a match
+    for filename in os.listdir(sig_dir):
+        if filename.lower().endswith(('.htm', '.html')):
+            # Extract the base name without extension
+            base_name = os.path.splitext(filename)[0].lower()
+            if email.lower() in base_name:
+                sig_path = os.path.join(sig_dir, filename)
+                signature = get_signature_by_path(sig_path)
+                if signature:
+                    logging.info(f"Signature found: {sig_path}")
+                    return signature
+
+    logging.error(f"No signature file found containing email: {email}")
+    return None
+
+
+def compose_email_classic(expiring_employees_str):
+    """
+    Composes and displays an email via COM automation for classic Outlook.
+    """
+    print("compose_email_classic called.")
+    try:
+        # Initialize Outlook application object
+        outlookApp = win32.Dispatch("Outlook.Application")
+        mail = outlookApp.CreateItem(0)  # 0: olMailItem
+        print("Outlook email item created.")
+
+        # Define recipients (keeping the original recipients)
         mail.To = "alejandra.gamboa@absolutecaregivers.com; kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
         mail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com; thea.banks@absolutecaregivers.com"
         mail.Subject = "Weekly Update: South Bend Expired or Expiring Drivers Licenses"
+        print("Email recipients and subject set.")
 
-        # Construct the signature path dynamically
-        signature_filename = "Absolute Signature (seth.riley@absolutecaregivers.com).htm"
-        sig_path = os.path.join(os.environ['APPDATA'], 'Microsoft', 'Signatures', signature_filename)
-
-        # Get the specified signature
-        signature = get_signature_by_path(sig_path)
+        # Get the default signature
+        signature = get_default_signature()
 
         # Compose the email body in HTML format with consistent font and size
         email_body = (
-            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'>"  # Start of styled div
+            "<div style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
             "<p>Hi Alli,</p>"
             "<p>I hope this message finds you well.</p>"
             "<p>This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the South Bend employee audit checklist with their new expirations.</p>"
-            "<pre  style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
+            "<pre style='font-family: Calibri, sans-serif; font-size: 11pt;'>"
             f"{expiring_employees_str}"
             "</pre>"
             "<p>Best regards,</p>"
-            "</div>"  # End of styled div
+            "</div>"
         )
 
         # Append the signature if available
         if signature:
             email_body += signature
+            print("Signature appended to email body.")
         else:
-            email_body += "<p>{username}<br>Absolute Caregivers</p>"
+            username = os.getlogin()
+            email_body += f"<p>{username}<br>Absolute Caregivers</p>"
+            print("No signature found; using fallback signature.")
 
         # Set the email body and format
         mail.HTMLBody = email_body
+        print("Email body set.")
 
         # Display the email for manual curation before sending
         mail.Display(False)  # False to open the email without modal dialog
-        logging.info("Email displayed successfully.")
         print("Email composed successfully.")
     except Exception as e:
-        logging.error(f"Failed to send email: {e}")
-        print(f"Failed to send email: {e}")
-    finally:
-        # Release COM objects
-        if 'mail' in locals() and mail:
-            del mail
-        if 'outlookApp' in locals() and outlookApp:
-            del outlookApp
+        logging.error(f"Failed to compose or display email via COM automation: {e}")
+        raise
 
+
+def send_email(expiring_employees_str):
+    """
+    Composes and sends an email with a 5-second timeout for COM automation.
+    Falls back to using a mailto link if the timeout is exceeded.
+    """
+    print("send_email called.")
+    # Try composing email via COM automation with a timeout
+    try:
+        process = Process(target=compose_email_classic, args=(expiring_employees_str,))
+        process.start()
+        process.join(timeout=5)  # Wait up to 5 seconds
+
+        if process.is_alive():
+            logging.warning("Composing email via COM automation took too long, terminating process.")
+            process.terminate()
+            process.join()
+            raise Exception("Timeout composing email via COM automation.")
+        else:
+            logging.info("Email composed via COM automation successfully.")
+            return  # Exit the function, as the email has been composed successfully
+    except Exception as e:
+        logging.error(f"Exception during composing email via COM automation: {e}")
+        # Proceed to fallback method
+
+    # Fallback method using 'mailto' link
+    logging.info("Using fallback method to compose email.")
+    print("Using fallback method to compose email.")
+
+    # Prepare email components
+    to_addresses = "alejandra.gamboa@absolutecaregivers.com; kaitlyn.moss@absolutecaregivers.com; raegan.lopez@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com"
+    cc_addresses = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com; thea.banks@absolutecaregivers.com"
+    subject = "Weekly Update: South Bend Expired or Expiring Drivers Licenses"
+
+    # Convert HTML content to plain text
+    email_body = (
+        "Hi Alli,\n\n"
+        "I hope this message finds you well.\n\n"
+        "This is your weekly update with the list of employees who either have expired or are close to expiring Drivers Licenses. Please contact them. Once resolved, update the South Bend employee audit checklist with their new expirations.\n\n"
+    )
+
+    email_body += f"{expiring_employees_str}\n"
+
+    email_body += "Best regards,\n"
+
+    # Append the signature if available
+    signature = get_default_signature()
+    if signature:
+        # Remove HTML tags from signature
+        soup = BeautifulSoup(signature, 'html.parser')
+        signature_text = soup.get_text()
+        email_body += signature_text
+        print("Signature appended to email body.")
+    else:
+        username = os.getlogin()
+        email_body += f"{username}\nAbsolute Caregivers"
+        print("No signature found; using fallback signature.")
+
+    # Prepare email addresses
+    to_addresses_plain = to_addresses.replace(';', ',')
+    cc_addresses_plain = cc_addresses.replace(';', ',')
+
+    # Create the mailto link
+    mailto_link = f"mailto:{urllib.parse.quote(to_addresses_plain)}"
+    mailto_link += f"?cc={urllib.parse.quote(cc_addresses_plain)}"
+    mailto_link += f"&subject={urllib.parse.quote(subject)}"
+    mailto_link += f"&body={urllib.parse.quote(email_body)}"
+
+    # Open the mailto link
+    webbrowser.open(mailto_link)
+    logging.info("Email composed using 'mailto' and opened in default email client.")
+    print("Email composed using 'mailto' and opened in default email client.")
 
 def extract_expiring_employees():
     """

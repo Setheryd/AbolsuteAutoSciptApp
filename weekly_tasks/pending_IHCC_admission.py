@@ -306,8 +306,8 @@ def compose_email_classic(pending_admissions):
         outlook = win32.Dispatch("Outlook.Application")
         mail = outlook.CreateItem(0)  # 0: olMailItem
 
-        mail.To = "recipient1@example.com; recipient2@example.com"
-        mail.CC = "cc1@example.com; cc2@example.com"
+        mail.To = "lyudmila.slepaya@absolutecaregivers.com; mya.engelken@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com; victoria.shmoel@absolutecaregivers.com"
+        mail.CC =  "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
         mail.Subject = "Pending IHCC Admissions"
         print("Email recipients and subject set.")
 
@@ -384,8 +384,8 @@ def send_email(pending_admissions):
     print("Using fallback method to compose email.")
 
     # Prepare email components
-    to_addresses = "recipient1@example.com; recipient2@example.com"
-    cc_addresses = "cc1@example.com; cc2@example.com"
+    to_addresses = "lyudmila.slepaya@absolutecaregivers.com; mya.engelken@absolutecaregivers.com; ulyana.stokolosa@absolutecaregivers.com; victoria.shmoel@absolutecaregivers.com"
+    cc_addresses =  "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
     subject = "Pending IHCC Admissions"
 
     # Convert HTML content to plain text

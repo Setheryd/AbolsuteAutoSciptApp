@@ -277,12 +277,12 @@ def compose_email_classic(pending_admissions):
 
         # Define recipients
         outlookMail.To = (
-            "recipient1@example.com; "
-            "recipient2@example.com; "
-            "recipient3@example.com; "
-            "recipient4@example.com"
+            "kaitlyn.moss@absolutecaregivers.com; "
+            "raegan.lopez@absolutecaregivers.com; "
+            "ulyana.stokolosa@absolutecaregivers.com; "
+            "Liliia.Reshetnyk@absolutecaregivers.com "
         )
-        outlookMail.CC = "cc1@example.com; cc2@example.com"
+        outlookMail.CC = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
         outlookMail.Subject = "Pending Caregiver Assignment Reminder"
         print("Email recipients and subject set.")
 
@@ -359,12 +359,12 @@ def send_email(pending_admissions):
 
     # Prepare email components
     to_addresses = (
-        "recipient1@example.com; "
-        "recipient2@example.com; "
-        "recipient3@example.com; "
-        "recipient4@example.com"
+        "kaitlyn.moss@absolutecaregivers.com; "
+            "raegan.lopez@absolutecaregivers.com; "
+            "ulyana.stokolosa@absolutecaregivers.com; "
+            "Liliia.Reshetnyk@absolutecaregivers.com "
     )
-    cc_addresses = "cc1@example.com; cc2@example.com"
+    cc_addresses = "alexander.nazarov@absolutecaregivers.com; luke.kitchel@absolutecaregivers.com"
     subject = "Pending Caregiver Assignment Reminder"
 
     # Convert HTML content to plain text
