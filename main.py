@@ -49,6 +49,36 @@ from matplotlib.figure import Figure
 
 from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
 
+# Importing all the necessary scripts from daily_tasks
+from daily_tasks.birthday import main as birthday_main
+
+# Importing all the necessary scripts from weekly_tasks
+from weekly_tasks.in_emp_id_exp import main as in_emp_id_exp_main
+from weekly_tasks.in_emp_inservices_exp import main as in_emp_inservices_exp_main
+from weekly_tasks.in_pat_sup_exp import main as in_pat_sup_exp_main
+from weekly_tasks.indy_emp_eval import main as indy_emp_eval_main
+from weekly_tasks.pending_admission import main as pending_admission_main
+from weekly_tasks.pending_caregiver_assignment import (
+    main as pending_caregiver_assignment_main,
+)
+from weekly_tasks.pending_IHCC_admission import main as pending_IHCC_admission_main
+from weekly_tasks.pending_PERS_installation import (
+    main as pending_PERS_installation_main,
+)
+from weekly_tasks.sb_emp_eval import main as sb_emp_eval_main
+from weekly_tasks.sb_emp_id_exp import main as sb_emp_id_exp_main
+from weekly_tasks.sb_emp_inservices_exp import main as sb_emp_inservices_exp_main
+from weekly_tasks.sb_pat_sup_exp import main as sb_pat_sup_exp_main
+
+# Importing all the necessary scripts from monthly_tasks
+from monthly_tasks.age import main as age_main
+from monthly_tasks.employee_attrition_email import main as employee_attrition_email_main
+from monthly_tasks.employee_attrition import main as employee_attrition_main
+from monthly_tasks.next_month_NOA_exp import main as next_month_NOA_exp_main
+from monthly_tasks.NOA_exp import main as NOA_exp_main
+from monthly_tasks.patient_attrition_email import main as patient_attrition_email_main
+from monthly_tasks.patient_attrition import main as patient_attrition_main
+
 
 # =============================================================================
 # Constants
@@ -310,75 +340,7 @@ class MainApp(QWidget):
 
         return os.path.join(base_path, relative_path)
 
-    def initialize_scripts_mapping(self):
-        """
-        Maps script names to their corresponding file paths.
-        """
-        self.scripts = {
-            # Daily Scripts
-            "Employee Birthday Email": self.get_resource_path(
-                os.path.join("daily_tasks", "birthday.py")
-            ),
-            # Weekly Scripts
-            "Caregiver ID Exp": self.get_resource_path(
-                os.path.join("weekly_tasks", "in_emp_id_exp.py")
-            ),
-            "IN Emp EVAL EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "indy_emp_eval.py")
-            ),
-            "IN Emp In-Services EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "in_emp_inservices_exp.py")
-            ),
-            "IN PAT SUP EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "in_pat_sup_exp.py")
-            ),
-            "Pending Admission": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_admission.py")
-            ),
-            "Pending Caregiver Assignment": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_caregiver_assignment.py")
-            ),
-            "Pending IHCC Admission": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_IHCC_admission.py")
-            ),
-            "Pending PERS Installation": self.get_resource_path(
-                os.path.join("weekly_tasks", "pending_PERS_Installation.py")
-            ),
-            "SB EMP EVAL EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_emp_eval.py")
-            ),
-            "SB Emp Inservices Exp": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_emp_inservices_exp.py")
-            ),
-            "SB ID EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_emp_id_exp.py")
-            ),
-            "SB PAT SUP EXP": self.get_resource_path(
-                os.path.join("weekly_tasks", "sb_pat_sup_exp.py")
-            ),
-            # Monthly Scripts
-            "Age Notification": self.get_resource_path(
-                os.path.join("monthly_tasks", "age.py")
-            ),
-            "Employee Attrition": self.get_resource_path(
-                os.path.join("monthly_tasks", "employee_attrition.py")
-            ),
-            "Expired NOAs": self.get_resource_path(
-                os.path.join("monthly_tasks", "NOA_exp.py")
-            ),
-            "Inventory Request": self.get_resource_path(
-                os.path.join("monthly_tasks", "inventory_request.py")
-            ),
-            "Next Months Expired NOAs": self.get_resource_path(
-                os.path.join("monthly_tasks", "next_month_NOA_exp.py")
-            ),
-            "Patient Attrition": self.get_resource_path(
-                os.path.join("monthly_tasks", "patient_attrition_email.py")
-            ),
-            "Employee Attrition": self.get_resource_path(
-                os.path.join("monthly_tasks", "employee_attrition_email.py")
-            ),
-        }
+    
 
     def initialize_ui(self):
         """
@@ -656,24 +618,7 @@ class MainApp(QWidget):
         self.cancel_button.clicked.connect(self.cancel_process)
         self.cancel_button.hide()  # Hide initially
 
-        # Log Area
-        self.log_label = QLabel("Script Output:")
-        self.log_label.hide()  # Hide initially
-        self.log_text = QTextEdit(self)
-        self.log_text.setReadOnly(True)
-        self.log_text.setFixedWidth(400)
-        self.log_text.setFixedHeight(400)
-        self.log_text.hide()  # Hide initially
-        self.log_text.setStyleSheet(
-            """
-            QTextEdit {
-                background-color: #2e2e2e;
-                color: white;
-                font-family: Consolas;
-                font-size: 12pt;
-            }
-        """
-        )
+        
 
         # Add Components to Indicators Layout
         self.indicator_layout.addWidget(self.animation_label, alignment=Qt.AlignCenter)
@@ -705,6 +650,79 @@ class MainApp(QWidget):
 
         # Add Scripts Tab to QTabWidget
         self.tab_widget.addTab(self.scripts_tab, "Scripts")
+        
+    def initialize_scripts_mapping(self):
+        # Mapping script names to their respective functions
+        self.scripts_mapping = {
+            # Daily Scripts
+            "Employee Birthday Email": birthday_main,
+
+            # Weekly Scripts
+            "Caregiver ID Exp": in_emp_id_exp_main,
+            "IN Emp EVAL EXP": indy_emp_eval_main,
+            "IN Emp In-Services EXP": in_emp_inservices_exp_main,
+            "IN PAT SUP EXP": in_pat_sup_exp_main,
+            "Pending Admission": pending_admission_main,
+            "Pending Caregiver Assignment": pending_caregiver_assignment_main,
+            "Pending IHCC Admission": pending_IHCC_admission_main,
+            "Pending PERS Installation": pending_PERS_installation_main,
+            "SB EMP EVAL EXP": sb_emp_eval_main,
+            "SB Emp Inservices Exp": sb_emp_inservices_exp_main,
+            "SB ID EXP": sb_emp_id_exp_main,
+            "SB PAT SUP EXP": sb_pat_sup_exp_main,
+
+            # Monthly Scripts
+            "Age Notification": age_main,
+            "Employee Attrition": employee_attrition_main,
+            "Expired NOAs": NOA_exp_main,
+            "Next Months Expired NOAs": next_month_NOA_exp_main,
+            "Patient Attrition": patient_attrition_main,
+        }
+
+        # Add "Run All" to execute all scripts in the respective category
+        self.scripts_mapping["Run All"] = self.run_all_scripts
+
+    def run_all_scripts(self, category):
+        """
+        Function to run all scripts within a category (daily, weekly, or monthly).
+        """
+        if category == "daily":
+            # Call all daily tasks
+            birthday_main()
+        elif category == "weekly":
+            # Call all weekly tasks
+            in_emp_id_exp_main()
+            indy_emp_eval_main()
+            in_emp_inservices_exp_main()
+            in_pat_sup_exp_main()
+            pending_admission_main()
+            pending_caregiver_assignment_main()
+            pending_IHCC_admission_main()
+            pending_PERS_installation_main()
+            sb_emp_eval_main()
+            sb_emp_id_exp_main()
+            sb_emp_inservices_exp_main()
+            sb_pat_sup_exp_main()
+        elif category == "monthly":
+            # Call all monthly tasks
+            age_main()
+            employee_attrition_main()
+            NOA_exp_main()
+            next_month_NOA_exp_main()
+            patient_attrition_main()
+            
+    def on_script_button_click(self, script_name):
+        """
+        Executes the script corresponding to the clicked button.
+        """
+        try:
+            if script_name in self.scripts_mapping:
+                self.scripts_mapping[script_name]()  # Call the script's main function
+            else:
+                print(f"Script {script_name} not found.")
+        except Exception as e:
+            print(f"Error while running {script_name}: {e}")
+
 
     def create_category_button(self, text, items, identifier):
         """
