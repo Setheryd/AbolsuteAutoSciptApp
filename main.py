@@ -40,7 +40,7 @@ from PySide6.QtWidgets import (
     QGraphicsBlurEffect,
 )
 from PySide6.QtCore import Qt, QProcess, Slot, QTimer
-from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  
+from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication, QPalette 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
