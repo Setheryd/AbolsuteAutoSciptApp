@@ -8,17 +8,14 @@
 import os
 import sys
 import subprocess
-from datetime import datetime, timedelta
 from io import StringIO
 import threading
 
 
 # Third-Party Imports
-import win32com.client as win32  # type: ignore
 import pandas as pd
-# import mplcursors  # type: ignore
-import matplotlib.pyplot as plt
-from PySide6.QtWidgets import (  # type: ignore
+# import mplcursors  
+from PySide6.QtWidgets import (  
     QApplication,
     QWidget,
     QPushButton,
@@ -42,8 +39,8 @@ from PySide6.QtWidgets import (  # type: ignore
     QProgressBar,
     QGraphicsBlurEffect,
 )
-from PySide6.QtCore import Qt, QProcess, Slot, QTimer, QPropertyAnimation  # type: ignore
-from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication, QPalette  # type: ignore
+from PySide6.QtCore import Qt, QProcess, Slot, QTimer
+from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication  
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -658,12 +655,12 @@ class MainApp(QWidget):
 
         # Log Area
         self.log_label = QLabel("Script Output:")
-        self.log_label.hide()  # Hide initially
+        #self.log_label.hide()  # Hide initially
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
         self.log_text.setFixedWidth(400)
         self.log_text.setFixedHeight(400)
-        self.log_text.hide()  # Hide initially
+        #self.log_text.hide()  # Hide initially
         self.log_text.setStyleSheet(
             """
             QTextEdit {
@@ -1735,8 +1732,8 @@ class MainApp(QWidget):
         """
         self.set_buttons_enabled(True)
         self.hide_execution_indicators()
-        self.log_text.hide()
-        self.log_label.hide()
+        #self.log_text.hide()
+        #self.log_label.hide()
 
     def set_buttons_enabled(self, enabled):
         """
@@ -1914,8 +1911,8 @@ class MainApp(QWidget):
         self.animation_movie.stop()
         self.animation_label.hide()
         self.cancel_button.hide()
-        self.log_text.hide()
-        self.log_label.hide()
+        #self.log_text.hide()
+        #self.log_label.hide()
 
     def reset_execution_state(self):
         """
@@ -1923,8 +1920,8 @@ class MainApp(QWidget):
         """
         self.set_buttons_enabled(True)
         self.hide_execution_indicators()
-        self.log_text.hide()
-        self.log_label.hide()
+        #self.log_text.hide()
+        #self.log_label.hide()
 
     # ---------------------------------
     # Script Running Method
