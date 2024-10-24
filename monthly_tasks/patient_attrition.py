@@ -27,7 +27,7 @@ parent_dir = get_resource_path(os.path.join(os.pardir))
 # Add the data_extraction directory to the system path
 sys.path.append(os.path.join(parent_dir, "data_extraction"))
 
-from patient_data_extractor import PatientDataExtractor
+from data_extraction.patient_data_extractor import PatientDataExtractor
 
 
 class ChurnAttritionAnalyzer:

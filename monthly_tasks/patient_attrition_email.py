@@ -3,8 +3,8 @@ import sys
 import matplotlib.pyplot as plt
 import win32com.client as win32
 from datetime import datetime
-from patient_attrition import ChurnAttritionAnalyzer
-from patient_data_extractor import PatientDataExtractor
+from .patient_attrition import ChurnAttritionAnalyzer
+from data_extraction.patient_data_extractor import PatientDataExtractor
 from bs4 import BeautifulSoup  # Needed for signature parsing
 import logging
 
