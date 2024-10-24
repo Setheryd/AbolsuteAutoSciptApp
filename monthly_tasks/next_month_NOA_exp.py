@@ -2,6 +2,11 @@ import win32com.client as win32
 import os
 import logging
 import sys
+from multiprocessing import Process
+import time
+import urllib.parse
+import webbrowser
+from bs4 import BeautifulSoup  # For parsing HTML signatures
 
 # Set up logging to both a file and the console
 logger = logging.getLogger()
@@ -318,18 +323,13 @@ def get_default_signature():
     return None
 
 
-def send_email(expiring_employees_str):
+def compose_email_classic(expiring_employees_str):
     """
-    Compose and send an email via Outlook with the list of expiring employees.
-
-    Args:
-        expiring_employees_str (str): The formatted string of expiring employees with markers.
+    Composes and displays an email via COM automation for classic Outlook.
     """
     try:
         # Initialize Outlook application object using DispatchEx for better performance
-        outlookApp = win32.DispatchEx(
-            "Outlook.Application"
-        )  # Changed from Dispatch to DispatchEx
+        outlookApp = win32.Dispatch("Outlook.Application")
         mail = outlookApp.CreateItem(0)  # 0: olMailItem
 
         # Define recipients
@@ -416,20 +416,88 @@ def send_email(expiring_employees_str):
         print("Email composed successfully.")
 
     except Exception as e:
-        logging.error(f"Failed to compose or display email: {e}")
-        print(f"Failed to compose email: {e}")
+        logging.error(f"Failed to compose or display email via COM automation: {e}")
+        raise
 
-    finally:
-        # Release COM objects to free up resources
-        try:
-            if "mail" in locals() and mail:
-                del mail
-            if "outlookApp" in locals() and outlookApp:
-                del outlookApp
-            logging.debug("Released COM objects for Outlook.")
-        except Exception as cleanup_error:
-            logging.error(f"Error during cleanup: {cleanup_error}")
-            print(f"Error during cleanup: {cleanup_error}")
+
+def send_email(expiring_employees_str):
+    """
+    Composes and sends an email with a 5-second timeout for COM automation.
+    Falls back to using a mailto link if the timeout is exceeded.
+    """
+    try:
+        # Run compose_email_classic in a separate process with a timeout
+        process = Process(target=compose_email_classic, args=(expiring_employees_str,))
+        process.start()
+        process.join(timeout=5)  # Wait up to 5 seconds
+
+        if process.is_alive():
+            logging.warning("Composing email via COM automation took too long, terminating process.")
+            process.terminate()
+            process.join()
+            raise Exception("Timeout composing email via COM automation.")
+        else:
+            logging.info("Email composed via COM automation successfully.")
+            return  # Exit the function, as the email has been composed
+    except Exception as e:
+        logging.error(f"Exception during composing email via COM automation: {e}")
+        # Proceed to fallback method
+
+    # Fallback method using 'mailto' link
+    logging.info("Using fallback method to compose email.")
+
+    # Prepare email components
+    to_addresses = (
+        "kaitlyn.moss@absolutecaregivers.com; "
+        "raegan.lopez@absolutecaregivers.com; "
+        "ulyana.stokolosa@absolutecaregivers.com"
+    )
+    cc_addresses = (
+        "alexander.nazarov@absolutecaregivers.com; "
+        "luke.kitchel@absolutecaregivers.com; "
+    )
+    subject = "Monthly Update: Next Months Expired Patients' Authorizations"
+
+    # Convert HTML content to plain text
+    email_body = (
+        "Hello Team,\n\n"
+        "This is an automated email generated using the billing files to track and maintain records of patients who may not have authorized units next month. "
+        "The accuracy of the names and details in this list depends on the maintenance and precision of the billing files themselves. "
+        "Please review the attached information carefully and ensure that any discrepancies are addressed promptly.\n\n"
+        "Thank you for your attention to this matter.\n\n"
+    )
+
+    # Process the collected data to structure categories and items
+    lines = expiring_employees_str.splitlines()
+
+    for line in lines:
+        line = line.strip()
+        if line.startswith("CATEGORY: "):
+            category = line.replace("CATEGORY: ", "").strip()
+            email_body += f"{category}:\n"
+        elif line.startswith("ITEM: "):
+            item = line.replace("ITEM: ", "").strip()
+            email_body += f"  - {item}\n"
+        else:
+            email_body += f"  - {line}\n"
+
+    # Add closing remarks
+    email_body += "\nBest regards,\nYour Name\nAbsolute Caregivers"
+
+    # Prepare email addresses
+    to_addresses_plain = to_addresses.replace(';', ',')
+    cc_addresses_plain = cc_addresses.replace(';', ',')
+
+    # Create the mailto link
+    mailto_link = f"mailto:{urllib.parse.quote(to_addresses_plain)}"
+    mailto_link += f"?cc={urllib.parse.quote(cc_addresses_plain)}"
+    mailto_link += f"&subject={urllib.parse.quote(subject)}"
+    mailto_link += f"&body={urllib.parse.quote(email_body)}"
+
+    # Open the mailto link
+    webbrowser.open(mailto_link)
+    logging.info("Email composed using 'mailto' and opened in default email client.")
+    print("Email composed using 'mailto' and opened in default email client.")
 
 
 def main():

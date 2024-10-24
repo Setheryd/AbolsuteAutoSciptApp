@@ -7,6 +7,9 @@ from patient_attrition import ChurnAttritionAnalyzer
 from patient_data_extractor import PatientDataExtractor
 from bs4 import BeautifulSoup  # Needed for signature parsing
 import logging
+from multiprocessing import Process
+import urllib.parse
+import webbrowser
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -90,7 +93,7 @@ def get_default_outlook_email():
     """
     print("get_default_outlook_email called.")
     try:
-        outlook = win32.DispatchEx("Outlook.Application")
+        outlook = win32.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
         accounts = namespace.Accounts
         if accounts.Count > 0:
@@ -176,61 +179,134 @@ def embed_images_in_signature(signature_html, sig_dir):
     print("All images processed.")
     return str(soup), image_attachments
 
+def compose_email_classic(report, signature, chart_filename):
+    """
+    Composes and displays an email via COM automation for classic Outlook.
+    """
+    try:
+        print("compose_email_classic called.")
+        # Create the Outlook application
+        print("Creating Outlook application...")
+        outlook = win32.Dispatch("Outlook.Application")
+        mail = outlook.CreateItem(0)
+        print("Outlook email item created.")
+
+        # Email body with last month's results
+        print("Preparing email body...")
+        body = f"""
+        <html>
+            <body>
+                <p>Hello,</p>
+                <p>Please find attached the churn and attrition analysis report for last month ({report['report_month']}):</p>
+                <ul>
+                    <li>Starting Patient Count: {report['starting_patient_count']}</li>
+                    <li>Ending Patient Count: {report['ending_patient_count']}</li>
+                    <li>New Patients: {report['new_patients']}</li>
+                    <li>Discharged Patients: {report['discharged_patients']}</li>
+                    <li>Net Change: {report['net_change']}</li>
+                    <li>Churn Rate: {report['churn_rate']}%</li>
+                    <li>Attrition Rate: {report['attrition_rate']}%</li>
+                </ul>
+                <p>See the chart below for a visual representation:</p>
+                <img src="cid:chart_image">
+                <p>Best regards,</p>
+                {signature}
+            </body>
+        </html>
+        """
+        print("Email body prepared.")
+
+        # Set the HTML body
+        mail.HTMLBody = body
+        print("HTML body set.")
+
+        # Embed the chart image
+        if chart_filename and os.path.exists(chart_filename):
+            print(f"Attaching chart image: {chart_filename}")
+            attachment = mail.Attachments.Add(chart_filename)
+            # Assign a Content-ID to the attachment
+            attachment.PropertyAccessor.SetProperty("http://schemas.microsoft.com/mapi/proptag/0x3712001F", "chart_image")
+            print("Chart image attached and Content-ID set.")
+        else:
+            logging.error(f"Chart image not found at path: {chart_filename}")
+
+        # Set email parameters
+        mail.To = "alexander.nazarov@absolutecaregivers.com"
+        mail.CC = "luke.kitchel@absolutecaregivers.com; seth.riley@absolutecaregivers.com"
+        mail.Subject = 'Patient Monthly Churn and Attrition Report'
+        print("Email recipients and subject set.")
+        mail.Display()  # Use .Send() to send it directly
+
+        print("Email prepared successfully.")
+    except Exception as e:
+        logging.error(f"Failed to compose or display email via COM automation: {e}")
+        raise
+
 def send_email(report, signature, chart_filename):
     print("send_email called.")
-    # Create the Outlook application
-    print("Creating Outlook application...")
-    outlook = win32.DispatchEx('outlook.application')
-    mail = outlook.CreateItem(0)
-    print("Outlook email item created.")
+    # Try composing email via COM automation with a timeout
+    try:
+        process = Process(target=compose_email_classic, args=(report, signature, chart_filename))
+        process.start()
+        process.join(timeout=5)  # Wait up to 5 seconds
 
-    # Email body with last month's results
-    print("Preparing email body...")
-    body = f"""
-    <html>
-        <body>
-            <p>Hello,</p>
-            <p>Please find attached the churn and attrition analysis report for last month ({report['report_month']}):</p>
-            <ul>
-                <li>Starting Patient Count: {report['starting_patient_count']}</li>
-                <li>Ending Patient Count: {report['ending_patient_count']}</li>
-                <li>New Patients: {report['new_patients']}</li>
-                <li>Discharged Patients: {report['discharged_patients']}</li>
-                <li>Net Change: {report['net_change']}</li>
-                <li>Churn Rate: {report['churn_rate']}%</li>
-                <li>Attrition Rate: {report['attrition_rate']}%</li>
-            </ul>
-            <p>See the chart below for a visual representation:</p>
-            <img src="cid:chart_image">
-            <p>Best regards,</p>
-            {signature}
-        </body>
-    </html>
-    """
-    print("Email body prepared.")
+        if process.is_alive():
+            logging.warning("Composing email via COM automation took too long, terminating process.")
+            process.terminate()
+            process.join()
+            raise Exception("Timeout composing email via COM automation.")
+        else:
+            logging.info("Email composed via COM automation successfully.")
+            return  # Exit the function, as the email has been composed successfully
+    except Exception as e:
+        logging.error(f"Exception during composing email via COM automation: {e}")
+        # Proceed to fallback method
 
-    # Set the HTML body
-    mail.HTMLBody = body
-    print("HTML body set.")
+    # Fallback method using 'mailto' link
+    logging.info("Using fallback method to compose email.")
 
-    # Embed the chart image
-    if chart_filename and os.path.exists(chart_filename):
-        print(f"Attaching chart image: {chart_filename}")
-        attachment = mail.Attachments.Add(chart_filename)
-        # Assign a Content-ID to the attachment
-        attachment.PropertyAccessor.SetProperty("http://schemas.microsoft.com/mapi/proptag/0x3712001F", "chart_image")
-        print("Chart image attached and Content-ID set.")
+    # Prepare email components
+    to_addresses = "alexander.nazarov@absolutecaregivers.com"
+    cc_addresses = "luke.kitchel@absolutecaregivers.com; seth.riley@absolutecaregivers.com"
+    subject = 'Patient Monthly Churn and Attrition Report'
+
+    # Convert HTML content to plain text
+    body_text = (
+        f"Hello,\n\n"
+        f"Please find attached the churn and attrition analysis report for last month ({report['report_month']}):\n\n"
+        f"Starting Patient Count: {report['starting_patient_count']}\n"
+        f"Ending Patient Count: {report['ending_patient_count']}\n"
+        f"New Patients: {report['new_patients']}\n"
+        f"Discharged Patients: {report['discharged_patients']}\n"
+        f"Net Change: {report['net_change']}\n"
+        f"Churn Rate: {report['churn_rate']}%\n"
+        f"Attrition Rate: {report['attrition_rate']}%\n\n"
+        "Best regards,\n"
+    )
+
+    # Add signature if available
+    if signature:
+        # Remove HTML tags from signature
+        soup = BeautifulSoup(signature, 'html.parser')
+        signature_text = soup.get_text()
+        body_text += signature_text
     else:
-        logging.error(f"Chart image not found at path: {chart_filename}")
+        body_text += "[Your Name]\n[Your Position]"
 
-    # Set email parameters
-    mail.To = "alexander.nazarov@absolutecaregivers.com"
-    mail.CC = "luke.kitchel@absolutecaregivers.com; seth.riley@absolutecaregivers.com"
-    mail.Subject = 'Patient Monthly Churn and Attrition Report'
-    print("Email recipients and subject set.")
-    mail.Display()  # Use .Send() to send it directly
+    # Prepare email addresses
+    to_addresses_plain = to_addresses.replace(';', ',')
+    cc_addresses_plain = cc_addresses.replace(';', ',')
 
-    print("Email prepared successfully.")
+    # Create the mailto link
+    mailto_link = f"mailto:{urllib.parse.quote(to_addresses_plain)}"
+    mailto_link += f"?cc={urllib.parse.quote(cc_addresses_plain)}"
+    mailto_link += f"&subject={urllib.parse.quote(subject)}"
+    mailto_link += f"&body={urllib.parse.quote(body_text)}"
+
+    # Open the mailto link
+    webbrowser.open(mailto_link)
+    logging.info("Email composed using 'mailto' and opened in default email client.")
+    print("Email composed using 'mailto' and opened in default email client.")
 
 def main():
     print("main function called.")
