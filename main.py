@@ -14,7 +14,7 @@ import threading
 
 # Third-Party Imports
 import pandas as pd
-# import mplcursors  
+# import mplcursors
 from PySide6.QtWidgets import (  
     QApplication,
     QWidget,
@@ -39,12 +39,15 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QGraphicsBlurEffect,
 )
-from PySide6.QtCore import Qt, QProcess, Slot, QTimer
-from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication, QPalette 
+from PySide6.QtCore import Qt, QProcess, Slot, QTimer, QSize
+from PySide6.QtGui import QMovie, QPixmap, QPainter, QColor, QGuiApplication, QPalette, QIcon 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+
 from ui.ability_ui import setup_ability_mode_tabs  # Import the AbilityTab class
+
+from required_package_installs import main as SyncPackages
 
 
 # =============================================================================
@@ -421,6 +424,13 @@ class MainApp(QWidget):
 
         self.main_layout = QVBoxLayout(self)
 
+        # Create a horizontal layout for the toggle and the image button
+        top_layout = QHBoxLayout()
+
+        # Create a spacer to the left of the toggle button
+        left_spacer = QWidget()
+        left_spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
         # Create a toggle button for switching between Absolute and Ability
         self.toggle_button = QPushButton("Absolute", self)
         self.toggle_button.setCheckable(True)
@@ -430,6 +440,7 @@ class MainApp(QWidget):
                 background-color: #207544;
                 border-radius: 15px;
                 padding: 10px 20px;
+                margin-left: 25px;
                 font-size: 14px;
                 font-weight: bold;
                 color: white;
@@ -437,12 +448,44 @@ class MainApp(QWidget):
             QPushButton:checked {
                 background-color: #7e07a0;
             }
-        """
+            """
         )
         self.toggle_button.clicked.connect(self.switch_mode)
 
-        # Add the toggle button to the top of the layout
-        self.main_layout.addWidget(self.toggle_button, alignment=Qt.AlignCenter)
+        # Create a spacer between the toggle button and the image button
+        center_spacer = QWidget()
+        center_spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+        # Add the left spacer, toggle button, and center spacer to the horizontal layout
+        top_layout.addWidget(left_spacer)  # Left spacer to center the toggle button
+        top_layout.addWidget(self.toggle_button, alignment=Qt.AlignmentFlag.AlignCenter)  # Centered toggle button
+        top_layout.addWidget(center_spacer)  # Spacer between toggle and image button
+
+        # Create an image button with no background
+        self.sync_packages = QPushButton(self)
+        self.sync_packages.setIcon(QIcon("resources/running.png"))  # Use your image path
+        self.sync_packages.setIconSize(QSize(40, 40))  # Set icon size
+
+        # Remove background, border, and margins for the image button
+        self.sync_packages.setStyleSheet(
+            """
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                margin: 0px;
+                padding: 0px;
+            }
+            """
+        )
+
+        # Connect the sync_packages button to the SyncPackages function
+        self.sync_packages.clicked.connect(self.run_sync_packages)
+
+        # Add the image button to the right side of the horizontal layout
+        top_layout.addWidget(self.sync_packages, alignment=Qt.AlignmentFlag.AlignRight)
+
+        # Add the horizontal layout (with the toggle button and image button) to the main layout
+        self.main_layout.addLayout(top_layout)
 
         # Create a QTabWidget for switching between tabs
         self.tab_widget = QTabWidget(self)
@@ -462,6 +505,63 @@ class MainApp(QWidget):
 
         # Initial state is Absolute
         self.is_ability_mode = False
+
+    def run_sync_packages(self):
+        """
+        Runs the SyncPackages function using QProcess and logs its output to log_text.
+        """
+        try:
+            self.log_text.clear()  # Clear any previous log output
+            self.log_text.append("<span style='color: white;'>Syncing packages...</span>")
+
+            # Determine if running as PyInstaller bundled executable or using normal Python interpreter
+            interpreter = (
+                sys.executable if not getattr(sys, "frozen", False) else "python"
+            )
+
+            # Initialize QProcess to execute the script using the correct interpreter
+            self.process = QProcess(self)
+            
+            # Set up the script to run - assuming 'required_package_installs.py' contains the SyncPackages function
+            script_path = self.get_resource_path("required_package_installs.py")
+            self.process.setProgram(interpreter)
+            self.process.setArguments(["-u", script_path])
+
+            # Connect signals to handle stdout, stderr, and process completion
+            self.process.readyReadStandardOutput.connect(self.handle_sync_stdout)
+            self.process.readyReadStandardError.connect(self.handle_sync_stderr)
+            self.process.finished.connect(self.handle_sync_finished)
+
+            # Start the process
+            self.process.start()
+
+        except Exception as e:
+            self.log_text.append(f"<span style='color: red;'>Error: {str(e)}</span>")
+
+    def handle_sync_stdout(self):
+        """
+        Handles the standard output from the SyncPackages process.
+        """
+        if self.process:
+            output = bytes(self.process.readAllStandardOutput()).decode("utf-8")
+            self.log_text.append(f"<span style='color: white;'>{output.strip()}</span>")
+
+    def handle_sync_stderr(self):
+        """
+        Handles the standard error from the SyncPackages process.
+        """
+        if self.process:
+            error_output = bytes(self.process.readAllStandardError()).decode("utf-8")
+            self.log_text.append(f"<span style='color: red;'>{error_output.strip()}</span>")
+
+    def handle_sync_finished(self, exitCode, exitStatus):
+        """
+        Handles the completion of the SyncPackages process.
+        """
+        if exitCode == 0:
+            self.log_text.append("<span style='color: green;'>Sync completed successfully.</span>")
+        else:
+            self.log_text.append(f"<span style='color: red;'>Sync failed with exit code {exitCode}.</span>")
 
     def switch_mode(self):
         """
@@ -655,12 +755,12 @@ class MainApp(QWidget):
 
         # Log Area
         self.log_label = QLabel("Script Output:")
-        #self.log_label.hide()  # Hide initially
+        # self.log_label.hide()  # Hide initially
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
         self.log_text.setFixedWidth(400)
         self.log_text.setFixedHeight(400)
-        #self.log_text.hide()  # Hide initially
+        # self.log_text.hide()  # Hide initially
         self.log_text.setStyleSheet(
             """
             QTextEdit {
@@ -1732,8 +1832,8 @@ class MainApp(QWidget):
         """
         self.set_buttons_enabled(True)
         self.hide_execution_indicators()
-        #self.log_text.hide()
-        #self.log_label.hide()
+        # self.log_text.hide()
+        # self.log_label.hide()
 
     def set_buttons_enabled(self, enabled):
         """
@@ -1911,8 +2011,8 @@ class MainApp(QWidget):
         self.animation_movie.stop()
         self.animation_label.hide()
         self.cancel_button.hide()
-        #self.log_text.hide()
-        #self.log_label.hide()
+        # self.log_text.hide()
+        # self.log_label.hide()
 
     def reset_execution_state(self):
         """
@@ -1920,8 +2020,8 @@ class MainApp(QWidget):
         """
         self.set_buttons_enabled(True)
         self.hide_execution_indicators()
-        #self.log_text.hide()
-        #self.log_label.hide()
+        # self.log_text.hide()
+        # self.log_label.hide()
 
     # ---------------------------------
     # Script Running Method

@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+import time
 
 # Define the log file path
 LOGFILE = "install_log.txt"
@@ -62,6 +63,7 @@ PACKAGES = [
     "yarg",
 ]
 
+
 def log(message):
     """
     Writes a message to both the log file and the console.
@@ -70,43 +72,49 @@ def log(message):
         log_file.write(message + "\n")
     print(message)
 
-def run_command(command, success_message, error_message):
+
+def display_progress_bar(current, total, bar_length=40):
+    """
+    Displays a user-friendly progress bar in the console.
+    """
+    progress = current / total
+    block = int(bar_length * progress)
+    bar = "#" * block + "-" * (bar_length - block)
+    print(f"\rProgress: [{bar}] {current}/{total} packages", end="")
+
+
+def run_command(command, success_message, error_message, package=None):
     """
     Runs a shell command, logs the output, and handles errors.
+    Warnings and other output will be suppressed from the console.
     """
     try:
-        log(f"> {command}")
         result = subprocess.run(
             command,
             shell=True,
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
-        # Log the standard output
-        if result.stdout:
-            log(result.stdout.strip())
-        # Log the standard error
-        if result.stderr:
-            log(result.stderr.strip())
+
+        # Filter out warnings from stderr
+        filtered_stderr = "\n".join(
+            line for line in result.stderr.splitlines() if "WARNING" not in line
+        )
+
+        # Log the filtered standard error (if any) but don't display warnings to user
+        if filtered_stderr:
+            log(filtered_stderr.strip())
+        
         log(success_message)
     except subprocess.CalledProcessError:
+        # Only show package name on failure
         log(error_message)
-        display_log()
-        input("Press Enter to exit...")
-        sys.exit(1)
+        if package:
+            log(f"Error occurred while installing: {package}")
 
-def display_log():
-    """
-    Displays the contents of the log file.
-    """
-    log("\n--- Installation Log ---")
-    try:
-        with open(LOGFILE, "r", encoding="utf-8") as log_file:
-            print(log_file.read())
-    except FileNotFoundError:
-        print("Log file not found.")
+
 
 def verify_package(package):
     """
@@ -118,13 +126,12 @@ def verify_package(package):
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
-        log(f"{package} is installed successfully.")
+        return True
     except subprocess.CalledProcessError:
-        log(f"Verification failed: {package} is not installed.")
         return False
-    return True
+
 
 def main():
     # Initialize the log file
@@ -134,7 +141,7 @@ def main():
         log_file.write("============================================\n")
         log_file.write("         Installing Required Packages       \n")
         log_file.write("============================================\n")
-    
+
     log("Checking if Python is installed...")
 
     # Check if Python is accessible
@@ -144,16 +151,16 @@ def main():
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         # Some Python versions output version info to stderr
         version_info = python_version.stdout.strip() or python_version.stderr.strip()
         log(f"Python is installed: {version_info}")
     except subprocess.CalledProcessError:
         log("Python is not installed or not added to PATH.")
-        log("Please install Python from https://www.python.org/downloads/ and ensure it's added to your system's PATH.")
-        display_log()
-        input("Press Enter to exit...")
+        log(
+            "Please install Python from https://www.python.org/downloads/ and ensure it's added to your system's PATH."
+        )
         sys.exit(1)
 
     log("Python check completed successfully. Continuing...")
@@ -168,18 +175,25 @@ def main():
 
     log("Pip upgrade done. Proceeding to install packages...")
 
-    # Iterate through the list of packages and install each
-    for package in PACKAGES:
-        log(f"\nInstalling {package}...")
+    # Install packages with progress bar
+    total_packages = len(PACKAGES)
+    for index, package in enumerate(PACKAGES, start=1):
+        display_progress_bar(index, total_packages)
+
+        # Install the package
         run_command(
             f"python -m pip install {package} --user",
-            f"{package} installed successfully.",
+            f"",
             f"Failed to install {package}. Please check your internet connection and Python setup.",
+            package,
         )
+        # Short delay to simulate loading
+        time.sleep(0.1)
 
-    
-        # Keep the Command Prompt window open
-        input("Press Enter to exit...")
+    # Final progress completion
+    display_progress_bar(total_packages, total_packages)
+    print("\nInstallation completed.")
+
 
 if __name__ == "__main__":
     main()

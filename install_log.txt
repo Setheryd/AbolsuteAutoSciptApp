@@ -1,61 +1,35 @@
 ============================================
-       Installing pywin32, bs4, and pandas  
+         Installing Required Packages       
 ============================================
 Checking if Python is installed...
 Python is installed: Python 3.12.3
 Python check completed successfully. Continuing...
 
 Upgrading pip to the latest version...
-> pip install --upgrade pip --user
-Requirement already satisfied: pip in c:\users\lukekitchel\appdata\roaming\python\python312\site-packages (24.2)
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
 Pip upgrade completed.
-Pip upgrade done. Proceeding to install pywin32...
+Pip upgrade done. Proceeding to install packages...
 
-Installing pywin32...
-> pip install pywin32 --user
-Requirement already satisfied: pywin32 in c:\users\lukekitchel\appdata\roaming\python\python312\site-packages (308)
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
-pywin32 installed.
-pywin32 installed. Proceeding to install bs4...
 
-Installing bs4...
-> pip install bs4 --user
-Collecting bs4
-  Using cached bs4-0.0.2-py2.py3-none-any.whl.metadata (411 bytes)
-Requirement already satisfied: beautifulsoup4 in c:\users\lukekitchel\appdata\roaming\python\python312\site-packages (from bs4) (4.12.3)
-Requirement already satisfied: soupsieve>1.2 in c:\python312\lib\site-packages (from beautifulsoup4->bs4) (2.5)
-Using cached bs4-0.0.2-py2.py3-none-any.whl (1.2 kB)
-Installing collected packages: bs4
-Successfully installed bs4-0.0.2
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
-bs4 installed.
-bs4 installed. Proceeding to install pandas...
 
-Installing pandas...
-> pip install pandas --user
-Requirement already satisfied: pandas in c:\users\lukekitchel\appdata\roaming\python\python312\site-packages (2.2.3)
-Requirement already satisfied: numpy>=1.26.0 in c:\users\lukekitchel\appdata\roaming\python\python312\site-packages (from pandas) (2.1.2)
-Requirement already satisfied: python-dateutil>=2.8.2 in c:\users\lukekitchel\appdata\roaming\python\python312\site-packages (from pandas) (2.9.0.post0)
-Requirement already satisfied: pytz>=2020.1 in c:\python312\lib\site-packages (from pandas) (2024.1)
-Requirement already satisfied: tzdata>=2022.7 in c:\python312\lib\site-packages (from pandas) (2024.1)
-Requirement already satisfied: six>=1.5 in c:\users\lukekitchel\appdata\roaming\python\python312\site-packages (from python-dateutil>=2.8.2->pandas) (1.16.0)
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
-WARNING: Ignoring invalid distribution ~ip (C:\Python312\Lib\site-packages)
-pandas installed.
 
-Verifying installations...
-pywin32 installed successfully.
-bs4 installed successfully.
-pandas installed successfully.
 
-============================================
-   All packages installed successfully!      
-============================================
 
-Installation complete. Reviewing log...
 
---- Installation Log ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
