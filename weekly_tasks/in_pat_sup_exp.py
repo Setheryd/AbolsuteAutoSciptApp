@@ -296,7 +296,10 @@ def run_task():
         print(f"An error occurred during task execution: {e}")
         sys.exit(1)
 
-if __name__ == "__main__":
+def main():
     print("Script execution started.")
     run_task()
     print("Script execution finished.")
+
+if __name__ == "__main__":
+    main()

@@ -333,7 +333,10 @@ def run_task():
         print(f"Error occurred during task execution: {e}")
         raise e
 
-if __name__ == "__main__":
+def main():
     print("Script execution started.")
     extract_evaluation_expirations()
     print("Script execution finished.")
+
+if __name__ == "__main__":
+    main()

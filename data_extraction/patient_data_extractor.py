@@ -179,7 +179,7 @@ class PatientDataExtractor:
             print("No data collected.")
             return None
 
-if __name__ == "__main__":
+def main():
     extractor = PatientDataExtractor()
     df = extractor.extract_eligible_patients()
     if df is not None:
@@ -187,3 +187,6 @@ if __name__ == "__main__":
         print(df.to_csv(index=False))
     else:
         print("No eligible patient data was extracted.")
+
+if __name__ == "__main__":
+    main()

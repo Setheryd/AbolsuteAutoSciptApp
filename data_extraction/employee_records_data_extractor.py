@@ -182,8 +182,7 @@ class EmployeeRecordsExtractor:
             logging.error(f"Error in process_scheduling_files: {e}")
             # print(f"Error: {e}")
 
-# Run the extraction process
-if __name__ == "__main__":
+def main():
     extractor = EmployeeRecordsExtractor()
     df = extractor.process_scheduling_files()
     if df is not None:
@@ -191,3 +190,6 @@ if __name__ == "__main__":
         print(df.to_csv(index=False))
     else:
         print("No eligible patient data was extracted.")
+
+if __name__ == "__main__":
+    main()

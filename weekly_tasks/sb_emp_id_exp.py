@@ -436,6 +436,8 @@ def run_task():
         logging.error(f"An error occurred in run_task: {e}")
         raise e
 
+def main():
+    extract_expiring_employees()
 
 if __name__ == "__main__":
-    extract_expiring_employees()
+    main()

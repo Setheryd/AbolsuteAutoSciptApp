@@ -186,7 +186,7 @@ class CaregiverDataExtractor:
             print(f"Error: {e}")  # Debugging print
             return None
         
-if __name__ == "__main__":
+def main():
     extractor = CaregiverDataExtractor()
     df = extractor.extract_caregivers()
     if df is not None:
@@ -194,3 +194,6 @@ if __name__ == "__main__":
         print(df.to_csv(index=False))
     else:
         print("No eligible patient data was extracted.")
+
+if __name__ == "__main__":
+    main()
